@@ -1,0 +1,6 @@
+@in a
+@in b
+
+result = a & b
+
+@out opt = result

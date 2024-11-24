@@ -1,0 +1,17 @@
+@in(bits: 2) in
+
+segment_1 = in.0 | in.1
+segment_2 = in.0 & !in.1
+segment_3 = !in.0 & in.1
+segment_4 = in.0 & in.1
+segment_5 = in.1
+segment_6 = 0
+
+@out(bits: 16) out = [
+    0, 1, 6, 7, 8:      segment_1,
+    4, 5:               segment_2,
+    13:                 segment_3,
+    3:                  segment_4,
+    2, 9:               segment_5,
+    10, 11, 12, 14, 15: segment_6,
+]

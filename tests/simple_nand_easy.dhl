@@ -1,0 +1,20 @@
+@in(bits: 2) in
+
+in_0 = in.0
+in_1 = in.1
+in_0_inv = in_0 !& in_0
+in_1_inv = in_1 !& in_1
+
+segment_1 = in_0_inv !& in_1_inv
+
+segment_2_inv = in_0 !& in_1_inv
+segment_2 = segment_2_inv !& segment_2_inv
+
+segment_3_inv = in_0_inv !& in_1
+segment_3 = segment_3_inv !& segment_3_inv
+
+segment_4_inv = in_0 !& in_1
+segment_4 = segment_4_inv !& segment_4_inv
+
+segment_5 = in_1
+segment_6 = 0
