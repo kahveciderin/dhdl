@@ -1,6 +1,9 @@
 use std::{collections::HashMap, sync::Arc};
 
-use crate::parser::datatype::KnownBitWidth;
+use crate::parser::{
+    datatype::{GetBitWidth, KnownBitWidth},
+    ParserState,
+};
 
 use super::argument::Argument;
 
@@ -8,6 +11,15 @@ use super::argument::Argument;
 pub struct ExpressionWithWidth {
     pub expression: Expression,
     pub width: KnownBitWidth,
+}
+
+impl ExpressionWithWidth {
+    pub fn new(expression: Expression, state: &ParserState) -> Self {
+        Self {
+            width: expression.get_bit_width(state),
+            expression,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -29,17 +41,17 @@ pub struct Extract {
 
 #[derive(Debug, Clone)]
 pub enum UnaryOp {
-    Not(Arc<Expression>),
+    Not(Arc<ExpressionWithWidth>),
 }
 
 #[derive(Debug, Clone)]
 pub enum BinaryOp {
-    And(Arc<Expression>, Arc<Expression>),
-    NAnd(Arc<Expression>, Arc<Expression>),
-    Or(Arc<Expression>, Arc<Expression>),
-    NOr(Arc<Expression>, Arc<Expression>),
-    XOr(Arc<Expression>, Arc<Expression>),
-    XNOr(Arc<Expression>, Arc<Expression>),
+    And(Arc<ExpressionWithWidth>, Arc<ExpressionWithWidth>),
+    NAnd(Arc<ExpressionWithWidth>, Arc<ExpressionWithWidth>),
+    Or(Arc<ExpressionWithWidth>, Arc<ExpressionWithWidth>),
+    NOr(Arc<ExpressionWithWidth>, Arc<ExpressionWithWidth>),
+    XOr(Arc<ExpressionWithWidth>, Arc<ExpressionWithWidth>),
+    XNOr(Arc<ExpressionWithWidth>, Arc<ExpressionWithWidth>),
 }
 
 #[derive(Debug, Clone)]

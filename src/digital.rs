@@ -21,9 +21,14 @@ impl Coordinate {
 
     pub fn next() -> Self {
         unsafe {
+            // todo: make this look a bit nicer
             let ret = current_coordinate.clone();
+
+            // we are incrementing both on purpose, to make sure wires
+            // somehow don't overlap
             current_coordinate.x += 60;
             current_coordinate.y += 60;
+
             if current_coordinate.x > 2000 {
                 current_coordinate.x = 0;
             }

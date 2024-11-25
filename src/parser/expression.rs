@@ -56,10 +56,7 @@ pub fn parse_term(input: &mut Stream) -> PResult<Expression> {
                 let extract = parse_extract(input)?;
 
                 Ok(Expression::Extract(Extract {
-                    expression: Arc::new(ExpressionWithWidth {
-                        width: expression.get_bit_width(&input.state),
-                        expression,
-                    }),
+                    expression: Arc::new(ExpressionWithWidth::new(expression, &input.state)),
                     extract,
                 }))
             }
@@ -144,12 +141,30 @@ fn parse_binary_expression(input: &mut Stream) -> PResult<Expression> {
     for half_binary_expression in half_binary_expressions {
         let rhs = half_binary_expression.rhs;
         let op = match half_binary_expression.op.as_str() {
-            "&" => BinaryOp::And(Arc::new(lhs), Arc::new(rhs)),
-            "|" => BinaryOp::Or(Arc::new(lhs), Arc::new(rhs)),
-            "^" => BinaryOp::XOr(Arc::new(lhs), Arc::new(rhs)),
-            "!&" => BinaryOp::NAnd(Arc::new(lhs), Arc::new(rhs)),
-            "!|" => BinaryOp::NOr(Arc::new(lhs), Arc::new(rhs)),
-            "!^" => BinaryOp::XNOr(Arc::new(lhs), Arc::new(rhs)),
+            "&" => BinaryOp::And(
+                Arc::new(ExpressionWithWidth::new(lhs, &input.state)),
+                Arc::new(ExpressionWithWidth::new(rhs, &input.state)),
+            ),
+            "|" => BinaryOp::Or(
+                Arc::new(ExpressionWithWidth::new(lhs, &input.state)),
+                Arc::new(ExpressionWithWidth::new(rhs, &input.state)),
+            ),
+            "^" => BinaryOp::XOr(
+                Arc::new(ExpressionWithWidth::new(lhs, &input.state)),
+                Arc::new(ExpressionWithWidth::new(rhs, &input.state)),
+            ),
+            "!&" => BinaryOp::NAnd(
+                Arc::new(ExpressionWithWidth::new(lhs, &input.state)),
+                Arc::new(ExpressionWithWidth::new(rhs, &input.state)),
+            ),
+            "!|" => BinaryOp::NOr(
+                Arc::new(ExpressionWithWidth::new(lhs, &input.state)),
+                Arc::new(ExpressionWithWidth::new(rhs, &input.state)),
+            ),
+            "!^" => BinaryOp::XNOr(
+                Arc::new(ExpressionWithWidth::new(lhs, &input.state)),
+                Arc::new(ExpressionWithWidth::new(rhs, &input.state)),
+            ),
             _ => unreachable!(),
         };
 
@@ -178,7 +193,9 @@ fn parse_unary_expression(input: &mut Stream) -> PResult<Expression> {
     let (op, expr) = (alt((parse_bang,)), parse_expression).parse_next(input)?;
 
     match op {
-        "!" => Ok(Expression::UnaryOp(UnaryOp::Not(Arc::new(expr)))),
+        "!" => Ok(Expression::UnaryOp(UnaryOp::Not(Arc::new(
+            ExpressionWithWidth::new(expr, &input.state),
+        )))),
         _ => unreachable!(),
     }
 }
@@ -317,10 +334,10 @@ fn parse_combine_expression(input: &mut Stream) -> PResult<Expression> {
                             map.insert(
                                 n,
                                 Expression::Extract(Extract {
-                                    expression: Arc::new(ExpressionWithWidth {
-                                        width: expression.get_bit_width(&input.state),
+                                    expression: Arc::new(ExpressionWithWidth::new(
                                         expression,
-                                    }),
+                                        &input.state,
+                                    )),
                                     extract: ExtractInner::Bit(i.try_into().unwrap()),
                                 }),
                             );

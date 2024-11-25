@@ -1,0 +1,4 @@
+val_1 = 123
+val_2 = 456
+
+@out(bits: 9) out = val_1 & val_2

@@ -1,0 +1,2 @@
+var = 123
+@out(bits: 9) out = !var

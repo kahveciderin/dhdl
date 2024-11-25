@@ -1,5 +1,5 @@
 use crate::{
-    digital::{Entry, EntryValue, VisualElement, Wire},
+    digital::{variable_definition::cast_value, Entry, EntryValue, VisualElement, Wire},
     parser::datatype::KnownBitWidth,
     types::expression::{
         BinaryOp, Combine, Expression, ExpressionWithWidth, Extract, ExtractInner, UnaryOp,
@@ -56,37 +56,128 @@ impl ToDigital for Expression {
 }
 
 macro_rules! binary_op_inner {
-    ($lhs:ident, $rhs:ident, $circuit:ident, $coordinate:ident, $name:literal) => {{
+    ($lhs:ident, $rhs:ident, $circuit:ident,  $name:literal, $end_x: literal) => {{
         let lhs_wire_positions = $lhs.convert_to_digital($circuit);
         let rhs_wire_positions = $rhs.convert_to_digital($circuit);
 
-        $circuit.visual_elements.push(VisualElement {
-            name: String::from($name),
-            attributes: vec![Entry {
-                name: String::from("wideShape"),
-                value: EntryValue::Boolean(true),
-            }],
-            position: $coordinate.clone(),
-        });
+        let largest_type = KnownBitWidth::max($lhs.width.clone(), $rhs.width.clone());
 
-        $circuit.wires.push(Wire {
-            start: lhs_wire_positions[0].clone(),
-            end: $coordinate.clone(),
-        });
+        let lhs_casted = cast_value(
+            $lhs.width.clone(),
+            largest_type.clone(),
+            lhs_wire_positions[0].clone(),
+            $circuit,
+        );
 
-        $circuit.wires.push(Wire {
-            start: rhs_wire_positions[0].clone(),
-            end: $coordinate.add(0, 40),
-        });
+        let rhs_casted = cast_value(
+            $rhs.width.clone(),
+            largest_type.clone(),
+            rhs_wire_positions[0].clone(),
+            $circuit,
+        );
+
+        if let KnownBitWidth::Fixed(bit_width) = largest_type {
+            let output_coordinate = Coordinate::next();
+
+            $circuit.visual_elements.push(VisualElement {
+                name: String::from("Splitter"),
+                attributes: vec![
+                    Entry {
+                        name: String::from("Input Splitting"),
+                        value: EntryValue::String(String::from("1 * ") + &bit_width.to_string()),
+                    },
+                    Entry {
+                        name: String::from("Output Splitting"),
+                        value: EntryValue::String(bit_width.to_string()),
+                    },
+                ],
+                position: output_coordinate.clone(),
+            });
+
+            let lhs_splitter_coordinate = Coordinate::next();
+
+            $circuit.visual_elements.push(VisualElement {
+                name: String::from("Splitter"),
+                attributes: vec![
+                    Entry {
+                        name: String::from("Input Splitting"),
+                        value: EntryValue::String(bit_width.to_string()),
+                    },
+                    Entry {
+                        name: String::from("Output Splitting"),
+                        value: EntryValue::String(String::from("1 * ") + &bit_width.to_string()),
+                    },
+                ],
+                position: lhs_splitter_coordinate.clone(),
+            });
+
+            let rhs_splitter_coordinate = Coordinate::next();
+
+            $circuit.visual_elements.push(VisualElement {
+                name: String::from("Splitter"),
+                attributes: vec![
+                    Entry {
+                        name: String::from("Input Splitting"),
+                        value: EntryValue::String(bit_width.to_string()),
+                    },
+                    Entry {
+                        name: String::from("Output Splitting"),
+                        value: EntryValue::String(String::from("1 * ") + &bit_width.to_string()),
+                    },
+                ],
+                position: rhs_splitter_coordinate.clone(),
+            });
+
+            $circuit.wires.push(Wire {
+                start: lhs_casted.clone(),
+                end: lhs_splitter_coordinate.clone(),
+            });
+
+            $circuit.wires.push(Wire {
+                start: rhs_casted.clone(),
+                end: rhs_splitter_coordinate.clone(),
+            });
+
+            for i in 0..bit_width {
+                let coordinate = Coordinate::next();
+
+                $circuit.visual_elements.push(VisualElement {
+                    name: String::from($name),
+                    attributes: vec![Entry {
+                        name: String::from("wideShape"),
+                        value: EntryValue::Boolean(true),
+                    }],
+                    position: coordinate.clone(),
+                });
+
+                $circuit.wires.push(Wire {
+                    start: lhs_splitter_coordinate.add(20, (20 * i).into()).clone(),
+                    end: coordinate.clone(),
+                });
+
+                $circuit.wires.push(Wire {
+                    start: rhs_splitter_coordinate.add(20, (20 * i).into()).clone(),
+                    end: coordinate.add(0, 40),
+                });
+
+                $circuit.wires.push(Wire {
+                    start: output_coordinate.add(0, (20 * i).into()).clone(),
+                    end: coordinate.add($end_x, 20),
+                });
+            }
+
+            vec![output_coordinate.add(20, 0)]
+        } else {
+            panic!("Trying to perform binary operation on object variables");
+        }
     }};
 }
 
 macro_rules! match_binary_ops {
-    ($op:ident, $circuit:ident, $coordinate:ident, [$($name:ident : $gate_name:literal : $end_x: literal),*]) => {
+    ($op:ident, $circuit:ident, [$($name:ident : $gate_name:literal : $end_x: literal),*]) => {
         match $op {
             $(BinaryOp::$name(lhs, rhs) => {
-                binary_op_inner!(lhs, rhs, $circuit, $coordinate, $gate_name);
-                vec![$coordinate.add($end_x, 20)]
+                binary_op_inner!(lhs, rhs, $circuit, $gate_name, $end_x)
             })*
         }
     };
@@ -94,12 +185,9 @@ macro_rules! match_binary_ops {
 
 impl ToDigital for BinaryOp {
     fn convert_to_digital(&self, circuit: &mut Circuit) -> Vec<Coordinate> {
-        let coordinate = Coordinate::next();
-
         match_binary_ops!(
             self,
             circuit,
-            coordinate,
             [
                 And: "And" : 80,
                 NAnd: "NAnd" : 100,
@@ -114,25 +202,80 @@ impl ToDigital for BinaryOp {
 
 impl ToDigital for UnaryOp {
     fn convert_to_digital(&self, circuit: &mut Circuit) -> Vec<Coordinate> {
-        let coordinate = Coordinate::next();
-
         match self {
             UnaryOp::Not(expression) => {
-                let expression_wire_positions = expression.convert_to_digital(circuit);
-                circuit.visual_elements.push(VisualElement {
-                    name: String::from("Not"),
-                    attributes: vec![],
-                    position: coordinate.clone(),
-                });
+                if let KnownBitWidth::Fixed(bit_width) = expression.width {
+                    let output_coordinate = Coordinate::next();
 
-                circuit.wires.push(Wire {
-                    start: expression_wire_positions[0].clone(),
-                    end: coordinate.clone(),
-                });
+                    circuit.visual_elements.push(VisualElement {
+                        name: String::from("Splitter"),
+                        attributes: vec![
+                            Entry {
+                                name: String::from("Input Splitting"),
+                                value: EntryValue::String(
+                                    String::from("1 * ") + &bit_width.to_string(),
+                                ),
+                            },
+                            Entry {
+                                name: String::from("Output Splitting"),
+                                value: EntryValue::String(bit_width.to_string()),
+                            },
+                        ],
+                        position: output_coordinate.clone(),
+                    });
+
+                    let splitter_coordinate = Coordinate::next();
+
+                    circuit.visual_elements.push(VisualElement {
+                        name: String::from("Splitter"),
+                        attributes: vec![
+                            Entry {
+                                name: String::from("Input Splitting"),
+                                value: EntryValue::String(bit_width.to_string()),
+                            },
+                            Entry {
+                                name: String::from("Output Splitting"),
+                                value: EntryValue::String(
+                                    String::from("1 * ") + &bit_width.to_string(),
+                                ),
+                            },
+                        ],
+                        position: splitter_coordinate.clone(),
+                    });
+
+                    let expression_wire_positions = expression.convert_to_digital(circuit);
+
+                    circuit.wires.push(Wire {
+                        start: expression_wire_positions[0].clone(),
+                        end: splitter_coordinate.clone(),
+                    });
+
+                    for i in 0..bit_width {
+                        let coordinate = Coordinate::next();
+
+                        circuit.visual_elements.push(VisualElement {
+                            name: String::from("Not"),
+                            attributes: vec![],
+                            position: coordinate.clone(),
+                        });
+
+                        circuit.wires.push(Wire {
+                            start: splitter_coordinate.add(20, (20 * i).into()),
+                            end: coordinate.clone(),
+                        });
+
+                        circuit.wires.push(Wire {
+                            start: coordinate.add(40, 0),
+                            end: output_coordinate.add(0, (20 * i).into()),
+                        });
+                    }
+
+                    vec![output_coordinate.add(20, 0)]
+                } else {
+                    panic!("Trying to perform unary operation on object variables");
+                }
             }
         }
-
-        vec![coordinate.add(40, 0)]
     }
 }
 
@@ -185,29 +328,48 @@ impl ToDigital for Extract {
                 let input = self.expression.convert_to_digital(circuit);
 
                 if let KnownBitWidth::Fixed(bit_width) = self.expression.width {
-                    circuit.visual_elements.push(VisualElement {
-                        name: String::from("Splitter"),
-                        attributes: vec![
-                            Entry {
-                                name: String::from("Input Splitting"),
-                                value: EntryValue::String(bit_width.to_string()),
-                            },
-                            Entry {
-                                name: String::from("Output Splitting"),
-                                value: EntryValue::String(
-                                    bit.to_string() + " - " + &bit.to_string(),
-                                ),
-                            },
-                        ],
-                        position: coordinate.clone(),
-                    });
+                    if bit >= bit_width {
+                        circuit.visual_elements.push(VisualElement {
+                            name: String::from("Const"),
+                            attributes: vec![
+                                Entry {
+                                    name: String::from("Value"),
+                                    value: EntryValue::Long(0),
+                                },
+                                Entry {
+                                    name: String::from("Bits"),
+                                    value: EntryValue::Integer(1),
+                                },
+                            ],
+                            position: coordinate.clone(),
+                        });
 
-                    circuit.wires.push(Wire {
-                        start: input[0].clone(),
-                        end: coordinate.clone(),
-                    });
+                        vec![coordinate.clone()]
+                    } else {
+                        circuit.visual_elements.push(VisualElement {
+                            name: String::from("Splitter"),
+                            attributes: vec![
+                                Entry {
+                                    name: String::from("Input Splitting"),
+                                    value: EntryValue::String(bit_width.to_string()),
+                                },
+                                Entry {
+                                    name: String::from("Output Splitting"),
+                                    value: EntryValue::String(
+                                        bit.to_string() + " - " + &bit.to_string(),
+                                    ),
+                                },
+                            ],
+                            position: coordinate.clone(),
+                        });
 
-                    vec![coordinate.add(20, 0)]
+                        circuit.wires.push(Wire {
+                            start: input[0].clone(),
+                            end: coordinate.clone(),
+                        });
+
+                        vec![coordinate.add(20, 0)]
+                    }
                 } else {
                     panic!("Extracting a bit from an object variable")
                 }

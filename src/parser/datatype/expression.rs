@@ -1,8 +1,6 @@
 use crate::{
     parser::ParserState,
-    types::expression::{
-        BinaryOp, Combine, Expression, ExpressionWithWidth, Extract, ExtractInner, UnaryOp,
-    },
+    types::expression::{BinaryOp, Combine, Expression, Extract, ExtractInner, UnaryOp},
     utils::integer_width::integer_width,
 };
 
@@ -28,7 +26,7 @@ impl GetBitWidth for Expression {
 impl GetBitWidth for UnaryOp {
     fn get_bit_width(&self, state: &ParserState) -> KnownBitWidth {
         match self {
-            UnaryOp::Not(expr) => expr.get_bit_width(state),
+            UnaryOp::Not(expr) => expr.width.clone(),
         }
     }
 }
@@ -41,9 +39,7 @@ impl GetBitWidth for BinaryOp {
             | BinaryOp::Or(lhs, rhs)
             | BinaryOp::NOr(lhs, rhs)
             | BinaryOp::XOr(lhs, rhs)
-            | BinaryOp::XNOr(lhs, rhs) => {
-                KnownBitWidth::max(lhs.get_bit_width(state), rhs.get_bit_width(state))
-            }
+            | BinaryOp::XNOr(lhs, rhs) => KnownBitWidth::max(lhs.width.clone(), rhs.width.clone()),
         }
     }
 }

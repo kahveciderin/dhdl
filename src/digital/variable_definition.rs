@@ -6,7 +6,7 @@ use crate::{
 
 use super::{Circuit, ToDigital};
 
-fn cast_value(
+pub fn cast_value(
     from: KnownBitWidth,
     to: KnownBitWidth,
     value: Coordinate,
