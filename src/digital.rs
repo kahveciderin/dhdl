@@ -73,6 +73,7 @@ pub enum EntryValue {
     Integer(i32),
     Long(i64),
     Boolean(bool),
+    Color((u8, u8, u8, u8)),
 }
 
 impl EntryValue {
@@ -96,6 +97,24 @@ impl EntryValue {
             EntryValue::Boolean(b) => {
                 w.start_element("boolean");
                 w.write_text(if *b { "true" } else { "false" });
+                w.end_element();
+            }
+            EntryValue::Color((r, g, b, a)) => {
+                w.start_element("awt-color");
+
+                w.start_element("red");
+                w.write_text(&r.to_string());
+                w.end_element();
+                w.start_element("green");
+                w.write_text(&g.to_string());
+                w.end_element();
+                w.start_element("blue");
+                w.write_text(&b.to_string());
+                w.end_element();
+                w.start_element("alpha");
+                w.write_text(&a.to_string());
+                w.end_element();
+
                 w.end_element();
             }
         }

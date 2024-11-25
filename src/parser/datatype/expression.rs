@@ -1,11 +1,8 @@
-use std::{collections::HashMap, sync::Arc};
+use std::sync::Arc;
 
 use crate::{
     parser::ParserState,
-    types::{
-        expression::{BinaryOp, Combine, Expression, Extract, ExtractInner, ModuleUse, UnaryOp},
-        module::Module,
-    },
+    types::expression::{BinaryOp, Combine, Expression, Extract, ExtractInner, ModuleUse, UnaryOp},
     utils::integer_width::integer_width,
 };
 
@@ -16,8 +13,8 @@ impl GetBitWidth for Expression {
         match self {
             Expression::Integer(number) => KnownBitWidth::Fixed(integer_width(*number)),
             Expression::Variable(variable) => state
-                .find_variable(&variable)
-                .expect(&format!("Variable {} not found", variable))
+                .find_variable(variable)
+                .unwrap_or_else(|| panic!("Variable {} not found", variable))
                 .get_bit_width(state),
             Expression::UnaryOp(op) => op.get_bit_width(state),
             Expression::BinaryOp(op) => op.get_bit_width(state),
@@ -58,14 +55,14 @@ impl GetBitWidth for Extract {
                     panic!("Start index must be less than or equal to end index");
                 }
 
-                KnownBitWidth::Fixed((1 + (end - start)) as u32)
+                KnownBitWidth::Fixed(1 + (end - start))
             }
             ExtractInner::Name(key) => {
                 let self_bit_width = &self.expression.width;
 
                 if let KnownBitWidth::Object(map) = self_bit_width {
                     map.get(key.as_str())
-                        .expect(&format!("Key {} not found in object", key))
+                        .unwrap_or_else(|| panic!("Key {} not found in object", key))
                         .as_ref()
                         .clone()
                 } else {
@@ -94,7 +91,7 @@ impl GetBitWidth for ModuleUse {
     fn get_bit_width(&self, state: &ParserState) -> KnownBitWidth {
         let module = state
             .find_module(&self.name)
-            .expect(&format!("Module {} not found", self.name));
+            .unwrap_or_else(|| panic!("Module {} not found", self.name));
 
         let map = module
             .outputs

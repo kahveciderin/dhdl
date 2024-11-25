@@ -7,7 +7,7 @@ use crate::{
         BinaryOp, Combine, Expression, ExpressionWithWidth, Extract, ExtractInner, ModuleUse,
         UnaryOp,
     },
-    utils::{integer_width::integer_width, random_name::unique_identifier},
+    utils::integer_width::integer_width,
 };
 
 use super::{

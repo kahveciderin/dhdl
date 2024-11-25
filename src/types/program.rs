@@ -17,7 +17,4 @@ pub enum ProgramStatement {
 #[derive(Debug)]
 pub struct Program {
     pub statements: Vec<ProgramStatement>,
-
-    pub inputs: Vec<ParserModuleVariableData>,
-    pub outputs: Vec<ParserModuleVariableData>,
 }

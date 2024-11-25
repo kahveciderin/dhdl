@@ -1,24 +1,10 @@
-use winnow::{combinator, PResult, Parser};
+use winnow::{PResult, Parser};
 
 use super::{whitespace::parse_whitespace, Stream};
 
 pub fn parse_multiple_chars<'s>(input: &mut Stream<'s>, mut s: &str) -> PResult<&'s str> {
     parse_whitespace(input)?;
     s.parse_next(input)
-}
-
-pub fn parse_multiple_chars_not_followed_by<'s>(
-    input: &mut Stream<'s>,
-    s: &str,
-    n: &[&str],
-) -> PResult<&'s str> {
-    parse_whitespace(input)?;
-
-    for not in n.iter() {
-        combinator::not(combinator::terminated(s, *not)).parse_next(input)?;
-    }
-
-    parse_multiple_chars(input, s)
 }
 
 pub fn parse_at<'s>(input: &mut Stream<'s>) -> PResult<&'s str> {
@@ -115,4 +101,18 @@ pub fn parse_true<'s>(input: &mut Stream<'s>) -> PResult<&'s str> {
 }
 pub fn parse_false<'s>(input: &mut Stream<'s>) -> PResult<&'s str> {
     parse_multiple_chars(input, "false")
+}
+
+pub fn parse_rgb<'s>(input: &mut Stream<'s>) -> PResult<&'s str> {
+    parse_multiple_chars(input, "rgb")
+}
+pub fn parse_rgba<'s>(input: &mut Stream<'s>) -> PResult<&'s str> {
+    parse_multiple_chars(input, "rgba")
+}
+
+pub fn parse_l<'s>(input: &mut Stream<'s>) -> PResult<&'s str> {
+    parse_multiple_chars(input, "l")
+}
+pub fn parse_L<'s>(input: &mut Stream<'s>) -> PResult<&'s str> {
+    parse_multiple_chars(input, "L")
 }

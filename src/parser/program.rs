@@ -9,7 +9,7 @@ use super::{
     module::{parse_external_module, parse_module},
     variable_definition::parse_variable_definitions,
     whitespace::parse_whitespace,
-    ParserModuleVariable, Stream,
+    Stream,
 };
 
 pub fn parse_program_statement(input: &mut Stream) -> PResult<ProgramStatement> {
@@ -37,22 +37,5 @@ pub fn parse_program(input: &mut Stream) -> PResult<Program> {
         ));
     }
 
-    let mut inputs = vec![];
-    let mut outputs = vec![];
-
-    let module = input.state.end_current_module();
-
-    for variable in module.variables {
-        match variable {
-            ParserModuleVariable::Input(data) => inputs.push(data),
-            ParserModuleVariable::Output(data) => outputs.push(data),
-            ParserModuleVariable::Wire(_) => {}
-        }
-    }
-
-    Ok(Program {
-        statements,
-        inputs,
-        outputs,
-    })
+    Ok(Program { statements })
 }

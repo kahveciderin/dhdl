@@ -12,7 +12,6 @@ use crate::{
         expression::ExpressionWithWidth,
         variable_definition::{VariableDefinition, VariableDefinitions},
     },
-    utils::random_name::unique_identifier,
 };
 
 use super::{

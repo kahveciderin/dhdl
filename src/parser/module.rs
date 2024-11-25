@@ -16,9 +16,9 @@ use super::{
     number::parse_signed_number,
     program::parse_program_statement,
     trivial_tokens::{
-        parse_at, parse_backslash, parse_close_paren, parse_close_scope, parse_colon, parse_comma,
-        parse_equals, parse_false, parse_open_paren, parse_open_scope, parse_quote, parse_star,
-        parse_true,
+        parse_L, parse_at, parse_backslash, parse_close_paren, parse_close_scope, parse_colon,
+        parse_comma, parse_equals, parse_false, parse_l, parse_open_paren, parse_open_scope,
+        parse_quote, parse_rgb, parse_rgba, parse_star, parse_true,
     },
     whitespace::parse_whitespace,
     ParserModuleVariableData, Stream,
@@ -108,14 +108,51 @@ fn parse_string(input: &mut Stream) -> PResult<String> {
     .parse_next(input)
 }
 
-fn parse_entry_value(input: &mut Stream) -> PResult<EntryValue> {
-    // todo: long distinction
+fn parse_rgba_color(input: &mut Stream) -> PResult<(u8, u8, u8, u8)> {
+    parse_whitespace(input)?;
 
+    combinator::preceded(
+        parse_rgba,
+        combinator::delimited(
+            parse_open_paren,
+            combinator::separated(4, parse_signed_number, parse_comma)
+                .map(|v: Vec<_>| (v[0] as u8, v[1] as u8, v[2] as u8, v[3] as u8)),
+            parse_close_paren,
+        ),
+    )
+    .parse_next(input)
+}
+fn parse_rgb_color(input: &mut Stream) -> PResult<(u8, u8, u8, u8)> {
+    parse_whitespace(input)?;
+
+    combinator::preceded(
+        parse_rgb,
+        combinator::delimited(
+            parse_open_paren,
+            combinator::separated(3, parse_signed_number, parse_comma)
+                .map(|v: Vec<_>| (v[0] as u8, v[1] as u8, v[2] as u8, 255)),
+            parse_close_paren,
+        ),
+    )
+    .parse_next(input)
+}
+
+fn parse_long(input: &mut Stream) -> PResult<i64> {
+    parse_whitespace(input)?;
+
+    combinator::terminated(parse_signed_number, combinator::alt((parse_l, parse_L)))
+        .parse_next(input)
+}
+
+fn parse_entry_value(input: &mut Stream) -> PResult<EntryValue> {
     combinator::alt((
-        parse_signed_number.map(|n| EntryValue::Integer(n)),
+        parse_long.map(|v| EntryValue::Long(v)),
+        parse_signed_number.map(|v| EntryValue::Integer(v as i32)),
         parse_string.map(|s| EntryValue::String(s.to_string())),
         parse_true.map(|_| EntryValue::Boolean(true)),
         parse_false.map(|_| EntryValue::Boolean(true)),
+        parse_rgb_color.map(|(r, g, b, a)| EntryValue::Color((r, g, b, a))),
+        parse_rgba_color.map(|(r, g, b, a)| EntryValue::Color((r, g, b, a))),
     ))
     .parse_next(input)
 }

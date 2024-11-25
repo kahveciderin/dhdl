@@ -12,7 +12,7 @@ use crate::types::expression::{
 use super::{
     argument::parse_arguments_inner,
     identifier::parse_identifier,
-    number::parse_number,
+    number::parse_number_u32,
     trivial_tokens::{
         parse_amperstand, parse_bang, parse_bang_amperstand, parse_bang_caret, parse_bang_pipe,
         parse_caret, parse_close_paren, parse_close_square_bracket, parse_colon, parse_comma,
@@ -98,7 +98,7 @@ fn parse_paren_expression(input: &mut Stream) -> PResult<Expression> {
 fn parse_integer_expression(input: &mut Stream) -> PResult<Expression> {
     parse_whitespace(input)?;
 
-    parse_number.map(Expression::Integer).parse_next(input)
+    parse_number_u32.map(Expression::Integer).parse_next(input)
 }
 
 fn parse_variable_expression(input: &mut Stream) -> PResult<Expression> {
@@ -208,7 +208,8 @@ struct Range {
 fn parse_range(input: &mut Stream) -> PResult<Range> {
     parse_whitespace(input)?;
 
-    let (start, _, end) = (parse_number, parse_double_dot, parse_number).parse_next(input)?;
+    let (start, _, end) =
+        (parse_number_u32, parse_double_dot, parse_number_u32).parse_next(input)?;
 
     Ok(Range { start, end })
 }
@@ -216,7 +217,7 @@ fn parse_range(input: &mut Stream) -> PResult<Range> {
 fn parse_bit_extract(input: &mut Stream) -> PResult<ExtractInner> {
     parse_whitespace(input)?;
 
-    parse_number.map(ExtractInner::Bit).parse_next(input)
+    parse_number_u32.map(ExtractInner::Bit).parse_next(input)
 }
 
 fn parse_name_extract(input: &mut Stream) -> PResult<ExtractInner> {
@@ -230,7 +231,7 @@ fn parse_name_extract(input: &mut Stream) -> PResult<ExtractInner> {
 fn parse_range_extract(input: &mut Stream) -> PResult<ExtractInner> {
     parse_whitespace(input)?;
 
-    (parse_number, parse_double_dot, parse_number)
+    (parse_number_u32, parse_double_dot, parse_number_u32)
         .map(|(start, _, end)| ExtractInner::Range(start, end))
         .parse_next(input)
 }
@@ -243,17 +244,15 @@ fn parse_extract(input: &mut Stream) -> PResult<ExtractInner> {
 
 #[derive(Debug)]
 enum CombineKey {
-    Number(u32),
     MultiNumber(Vec<u32>),
     NumberRange(Range),
-    Identifier(String),
     MultiIdentifier(Vec<String>),
 }
 
 fn parse_multi_number(input: &mut Stream) -> PResult<Vec<u32>> {
     parse_whitespace(input)?;
 
-    let numbers = combinator::separated(1.., parse_number, parse_comma).parse_next(input)?;
+    let numbers = combinator::separated(1.., parse_number_u32, parse_comma).parse_next(input)?;
 
     Ok(numbers)
 }
@@ -315,14 +314,11 @@ fn parse_combine_expression(input: &mut Stream) -> PResult<Expression> {
 
     let first_kv = &kvs[0];
     match first_kv.key {
-        CombineKey::Number(_) | CombineKey::MultiNumber(_) | CombineKey::NumberRange(_) => {
+        CombineKey::MultiNumber(_) | CombineKey::NumberRange(_) => {
             let mut map = HashMap::new();
 
             for kv in kvs {
                 match kv.key {
-                    CombineKey::Number(n) => {
-                        map.insert(n, kv.value.clone());
-                    }
                     CombineKey::MultiNumber(ns) => {
                         for n in ns {
                             map.insert(n, kv.value.clone());
@@ -360,14 +356,11 @@ fn parse_combine_expression(input: &mut Stream) -> PResult<Expression> {
 
             Ok(Expression::Combine(Combine::Bits(values)))
         }
-        CombineKey::Identifier(_) | CombineKey::MultiIdentifier(_) => {
-            let mut map = HashMap::new();
+        CombineKey::MultiIdentifier(_) => {
+            let mut map: HashMap<String, Expression> = HashMap::new();
 
             for kv in kvs {
                 match kv.key {
-                    CombineKey::Identifier(s) => {
-                        map.insert(s, kv.value.clone());
-                    }
                     CombineKey::MultiIdentifier(ss) => {
                         for s in ss {
                             map.insert(s, kv.value.clone());

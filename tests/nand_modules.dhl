@@ -3,6 +3,7 @@
     @in(1) dot      @ (60, 140)
 
     segSize = 5
+    Color = rgba(255, 0, 0, 255)
 }
 
 nand_inv {
