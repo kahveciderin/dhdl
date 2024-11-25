@@ -254,3 +254,5 @@ This project was created in a single day, from start to finish, so some features
 This project wouldn't be possible without the amazing work of [Helmut Neemann](https://github.com/hneemann) on [Digital](https://github.com/hneemann/Digital).
 
 The syntax and the semantics are loosely inspired by Verilog.
+
+The DHDL logo is shamelessly stolen from the DHL logo. I hope they don't mind.
