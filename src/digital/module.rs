@@ -3,8 +3,10 @@ use crate::types::module::{ExternalModule, Module};
 use super::{Circuit, CircuitModule, DigitalData, ToDigital};
 
 impl ToDigital for Module {
-    fn convert_to_digital(&self, _circuit: &mut Circuit) -> super::DigitalData {
-        todo!("convert module to digital")
+    fn convert_to_digital(&self, circuit: &mut Circuit) -> super::DigitalData {
+        circuit.modules.push(CircuitModule::Internal(self.clone()));
+
+        DigitalData::Empty
     }
 }
 impl ToDigital for ExternalModule {

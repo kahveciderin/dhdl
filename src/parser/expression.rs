@@ -60,7 +60,6 @@ pub fn parse_term(input: &mut Stream) -> PResult<Expression> {
                 }))
             }
             "(" => {
-                println!("ModuleUse");
                 let arguments = combinator::terminated(parse_arguments_inner, parse_close_paren)
                     .parse_next(input)?;
 
@@ -303,8 +302,6 @@ fn parse_combine_expression(input: &mut Stream) -> PResult<Expression> {
 
     let kvs: Vec<_> =
         combinator::separated(0.., parse_combine_kv, parse_comma).parse_next(input)?;
-
-    println!("kvs: {:#?}", kvs);
 
     combinator::opt(parse_comma).parse_next(input)?; // optional trailing comma
 

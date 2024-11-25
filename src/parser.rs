@@ -150,7 +150,5 @@ pub fn parse_program(input: &str) -> PResult<Program> {
         state: ParserState::new(),
     };
 
-    let ret = program::parse_program(&mut stream);
-    println!("{:#?}", stream.state);
-    ret
+    program::parse_program(&mut stream)
 }

@@ -146,6 +146,7 @@ impl VisualElement {
     }
 }
 
+#[derive(Debug)]
 pub struct CircuitVariable {
     name: String,
     data: DigitalData,
@@ -166,12 +167,18 @@ impl CircuitModule {
     }
 }
 
+#[derive(Debug)]
+pub struct CurrentModule {
+    variables: Vec<CircuitVariable>,
+}
+
 pub struct Circuit {
     wires: Vec<Wire>,
     visual_elements: Vec<VisualElement>,
 
-    variables: Vec<CircuitVariable>,
     modules: Vec<CircuitModule>,
+
+    current_module: Vec<CurrentModule>,
 }
 
 #[derive(Debug, Clone)]
@@ -221,9 +228,34 @@ impl Circuit {
             wires: vec![],
             visual_elements: vec![],
 
-            variables: vec![],
             modules: vec![],
+
+            current_module: vec![CurrentModule { variables: vec![] }],
         }
+    }
+
+    pub fn is_top(&self) -> bool {
+        self.current_module.len() <= 1
+    }
+
+    pub fn add_variable(&mut self, variable: CircuitVariable) {
+        self.current_module
+            .last_mut()
+            .unwrap()
+            .variables
+            .push(variable);
+    }
+
+    pub fn find_variable(&self, name: String) -> Option<&CircuitVariable> {
+        for module in self.current_module.iter().rev() {
+            for variable in &module.variables {
+                if variable.name == name {
+                    return Some(variable);
+                }
+            }
+        }
+
+        None
     }
 
     pub fn find_module(&self, name: &str) -> Option<&CircuitModule> {

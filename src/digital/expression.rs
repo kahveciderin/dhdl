@@ -7,10 +7,12 @@ use crate::{
         BinaryOp, Combine, Expression, ExpressionWithWidth, Extract, ExtractInner, ModuleUse,
         UnaryOp,
     },
-    utils::integer_width::integer_width,
+    utils::{integer_width::integer_width, random_name::unique_identifier},
 };
 
-use super::{Circuit, CircuitModule, Coordinate, DigitalData, ToDigital};
+use super::{
+    Circuit, CircuitModule, CircuitVariable, Coordinate, CurrentModule, DigitalData, ToDigital,
+};
 
 impl ToDigital for ExpressionWithWidth {
     fn convert_to_digital(&self, circuit: &mut Circuit) -> DigitalData {
@@ -43,7 +45,7 @@ impl ToDigital for Expression {
                 DigitalData::Wire(width, coordinate)
             }
             Expression::Variable(variable) => {
-                let var = circuit.variables.iter().find(|v| v.name == *variable);
+                let var = circuit.find_variable((*variable).clone());
 
                 match var {
                     Some(var) => var.data.clone(),
@@ -66,19 +68,9 @@ macro_rules! binary_op_inner {
 
         let largest_type = KnownBitWidth::max($lhs.width.clone(), $rhs.width.clone());
 
-        let lhs_casted = cast_value(
-            $lhs.width.clone(),
-            largest_type.clone(),
-            lhs_wire_positions,
-            $circuit,
-        );
+        let lhs_casted = cast_value(lhs_wire_positions, largest_type.clone(), $circuit);
 
-        let rhs_casted = cast_value(
-            $rhs.width.clone(),
-            largest_type.clone(),
-            rhs_wire_positions,
-            $circuit,
-        );
+        let rhs_casted = cast_value(rhs_wire_positions, largest_type.clone(), $circuit);
 
         if let KnownBitWidth::Fixed(bit_width) = largest_type {
             let output_coordinate = Coordinate::next();
@@ -326,7 +318,6 @@ impl ToDigital for Combine {
                 }
 
                 let ret = DigitalData::Object(obj);
-                println!("combine: {:?}", ret);
                 ret
             }
         }
@@ -392,12 +383,7 @@ impl ToDigital for Extract {
                 let coordinate = Coordinate::next();
 
                 let input = self.expression.convert_to_digital(circuit);
-                let input_casted = cast_value(
-                    self.expression.width.clone(),
-                    KnownBitWidth::Fixed(to + 1),
-                    input,
-                    circuit,
-                );
+                let input_casted = cast_value(input, KnownBitWidth::Fixed(to + 1), circuit);
 
                 circuit.visual_elements.push(VisualElement {
                     name: String::from("Splitter"),
@@ -424,8 +410,6 @@ impl ToDigital for Extract {
             ExtractInner::Name(name) => {
                 let input = self.expression.convert_to_digital(circuit);
 
-                println!("extraction from: {:?}", input);
-
                 if let DigitalData::Object(obj) = input {
                     if let Some(value) = obj.get(name) {
                         value.as_ref().clone()
@@ -447,14 +431,71 @@ impl ToDigital for ModuleUse {
         if let Some(module) = module {
             match module {
                 CircuitModule::Internal(module) => {
-                    todo!("internal module usage");
+                    circuit
+                        .current_module
+                        .push(CurrentModule { variables: vec![] });
+
+                    for input in module.inputs {
+                        let argument = self
+                            .arguments
+                            .get(&input.name)
+                            .or_else(|| {
+                                if self.arguments.len() == 1 {
+                                    self.arguments.get("0")
+                                } else {
+                                    None
+                                }
+                            })
+                            .unwrap_or_else(|| {
+                                panic!("Input {} not found", input.name);
+                            });
+                        let input_data = argument.value.convert_to_digital(circuit);
+                        let input_data =
+                            cast_value(input_data, argument.value.width.clone(), circuit);
+
+                        if let KnownBitWidth::Fixed(width) = argument.value.width {
+                            circuit.add_variable(CircuitVariable {
+                                name: input.name.clone(),
+                                data: DigitalData::Wire(width, input_data),
+                            });
+                        } else {
+                            panic!("Width of input is not fixed")
+                        }
+                    }
+
+                    for statement in &module.statements {
+                        statement.convert_to_digital(circuit);
+                    }
+
+                    let output_variables = module.outputs.iter().map(|v| v.name.clone());
+
+                    let mut map = HashMap::new();
+
+                    for var in output_variables {
+                        let var = circuit
+                            .current_module
+                            .last()
+                            .unwrap()
+                            .variables
+                            .iter()
+                            .find(|v| v.name == var); // not using find_variable here for a reason
+                        if let Some(var) = var {
+                            map.insert(var.name.clone(), Arc::new(var.data.clone()));
+                        } else {
+                            panic!("Output variable not found");
+                        }
+                    }
+
+                    circuit.current_module.pop();
+
+                    DigitalData::Object(map)
                 }
 
                 CircuitModule::External(module) => {
                     let coordinate = Coordinate::next();
 
                     circuit.visual_elements.push(VisualElement {
-                        name: module.name.clone(),
+                        name: module.internal_name.clone(),
                         attributes: module.attributes.clone(),
                         position: coordinate.clone(),
                     });

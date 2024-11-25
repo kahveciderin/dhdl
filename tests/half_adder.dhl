@@ -1,0 +1,13 @@
+half_adder {
+    @in a, b
+    
+    @out sum = a ^ b
+    @out carry = a & b
+}
+
+@in(1) a
+@in(1) b
+
+result = half_adder(a: a, b: b)
+@out sum = result.sum
+@out carry = result.carry

@@ -101,3 +101,18 @@ pub fn parse_star<'s>(input: &mut Stream<'s>) -> PResult<&'s str> {
 pub fn parse_minus<'s>(input: &mut Stream<'s>) -> PResult<&'s str> {
     parse_multiple_chars(input, "-")
 }
+
+pub fn parse_quote<'s>(input: &mut Stream<'s>) -> PResult<&'s str> {
+    parse_multiple_chars(input, "\"")
+}
+
+pub fn parse_backslash<'s>(input: &mut Stream<'s>) -> PResult<&'s str> {
+    parse_multiple_chars(input, "\\")
+}
+
+pub fn parse_true<'s>(input: &mut Stream<'s>) -> PResult<&'s str> {
+    parse_multiple_chars(input, "true")
+}
+pub fn parse_false<'s>(input: &mut Stream<'s>) -> PResult<&'s str> {
+    parse_multiple_chars(input, "false")
+}

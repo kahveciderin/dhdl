@@ -1,4 +1,4 @@
-use winnow::{combinator, PResult, Parser};
+use winnow::{combinator, token, PResult, Parser};
 
 use crate::{
     digital::{Coordinate, Entry, EntryValue},
@@ -16,8 +16,9 @@ use super::{
     number::parse_signed_number,
     program::parse_program_statement,
     trivial_tokens::{
-        parse_at, parse_close_paren, parse_close_scope, parse_colon, parse_comma, parse_equals,
-        parse_open_paren, parse_open_scope, parse_star,
+        parse_at, parse_backslash, parse_close_paren, parse_close_scope, parse_colon, parse_comma,
+        parse_equals, parse_false, parse_open_paren, parse_open_scope, parse_quote, parse_star,
+        parse_true,
     },
     whitespace::parse_whitespace,
     ParserModuleVariableData, Stream,
@@ -81,12 +82,40 @@ fn parse_external_module_variable(
     ))
 }
 
+fn parse_string_character(input: &mut Stream) -> PResult<char> {
+    combinator::alt((
+        token::none_of(['\n', '\r', '"', '\\']),
+        combinator::preceded(parse_backslash, token::one_of(['n', 'r', '\"', '\\'])).map(
+            |c| match c {
+                'n' => '\n',
+                'r' => '\r',
+                '"' => '"',
+                '\\' => '\\',
+                _ => unreachable!(),
+            },
+        ),
+    ))
+    .parse_next(input)
+}
+
+fn parse_string(input: &mut Stream) -> PResult<String> {
+    parse_whitespace(input)?;
+
+    combinator::preceded(
+        parse_quote,
+        combinator::repeat_till(0.., parse_string_character, parse_quote).map(|v| v.0),
+    )
+    .parse_next(input)
+}
+
 fn parse_entry_value(input: &mut Stream) -> PResult<EntryValue> {
     // todo: long distinction
 
     combinator::alt((
         parse_signed_number.map(|n| EntryValue::Integer(n)),
-        parse_identifier.map(|s| EntryValue::String(s.to_string())),
+        parse_string.map(|s| EntryValue::String(s.to_string())),
+        parse_true.map(|_| EntryValue::Boolean(true)),
+        parse_false.map(|_| EntryValue::Boolean(true)),
     ))
     .parse_next(input)
 }
@@ -117,7 +146,7 @@ fn parse_external_module_body_item(input: &mut Stream) -> PResult<ExternalModule
 pub fn parse_external_module(input: &mut Stream) -> PResult<ExternalModule> {
     parse_whitespace(input)?;
 
-    let name = combinator::preceded(parse_star, parse_identifier)
+    let mut name = combinator::preceded(parse_star, parse_identifier)
         .map(|s| s.to_string())
         .parse_next(input)?;
 
@@ -125,9 +154,18 @@ pub fn parse_external_module(input: &mut Stream) -> PResult<ExternalModule> {
         .map(|s| s.map(|s| s.to_string()))
         .parse_next(input)?;
 
+    let rename_str;
+    if let Some(original_name) = rename {
+        let rename = name.clone();
+        name = original_name;
+        rename_str = rename;
+    } else {
+        rename_str = name.clone();
+    }
+
     parse_open_scope(input)?;
 
-    input.state.start_new_module(name.clone());
+    input.state.start_new_module(rename_str.clone());
 
     let body: Vec<_> =
         combinator::repeat_till(0.., parse_external_module_body_item, parse_close_scope)
@@ -167,8 +205,8 @@ pub fn parse_external_module(input: &mut Stream) -> PResult<ExternalModule> {
     input.state.end_current_module();
 
     Ok(ExternalModule {
-        name,
-        rename,
+        internal_name: name,
+        name: rename_str,
         inputs,
         outputs,
         attributes,
@@ -187,8 +225,6 @@ pub fn parse_module(input: &mut Stream) -> PResult<Module> {
     let statements = combinator::repeat_till(0.., parse_program_statement, parse_close_scope)
         .map(|v| v.0)
         .parse_next(input)?;
-
-    println!("Parsed module: {:?}", statements);
 
     let module = input.state.end_current_module();
 

@@ -1,3 +1,10 @@
+* SixteenSeg {
+    @in(16) value   @ (40, 140)
+    @in(1) dot      @ (60, 140)
+
+    segSize = 5
+}
+
 nand_inv {
     @in in
     @out out = in !& in
@@ -34,3 +41,5 @@ segment_6 = 0
     2, 9:               segment_5,
     10, 11, 12, 14, 15: segment_6,
 ]
+
+SixteenSeg(value: out, dot: 0)

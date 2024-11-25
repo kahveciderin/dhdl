@@ -23,9 +23,8 @@ pub struct ExternalModuleVariableData {
 
 #[derive(Debug, Clone)]
 pub struct ExternalModule {
+    pub internal_name: String,
     pub name: String,
-    // todo: rename
-    pub rename: Option<String>,
 
     pub attributes: Vec<Entry>,
 

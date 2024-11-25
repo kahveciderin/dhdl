@@ -6,13 +6,8 @@ use crate::{
 
 use super::{Circuit, DigitalData, ToDigital};
 
-pub fn cast_value(
-    from: KnownBitWidth,
-    to: KnownBitWidth,
-    value: DigitalData,
-    circuit: &mut Circuit,
-) -> Coordinate {
-    let from = from.get_size();
+pub fn cast_value(value: DigitalData, to: KnownBitWidth, circuit: &mut Circuit) -> Coordinate {
+    let from = value.get_size();
     let to = to.get_size();
 
     if from > to {
@@ -97,9 +92,7 @@ impl ToDigital for VariableDefinitions {
                     if let Some(expression) = &def.value {
                         let data = expression.convert_to_digital(circuit);
 
-                        println!("Put {data:#?} into {}", def.name);
-
-                        circuit.variables.push(CircuitVariable {
+                        circuit.add_variable(CircuitVariable {
                             name: def.name.clone(),
                             data,
                         });
@@ -112,24 +105,27 @@ impl ToDigital for VariableDefinitions {
                 Decorator::In(bits) => {
                     for def in self.definitions.iter() {
                         let coordinate = Coordinate::next();
-                        circuit.visual_elements.push(VisualElement {
-                            name: String::from("In"),
-                            attributes: vec![
-                                Entry {
-                                    name: String::from("Label"),
-                                    value: EntryValue::String(def.name.clone()),
-                                },
-                                Entry {
-                                    name: String::from("Bits"),
-                                    value: EntryValue::Integer(*bits as i32),
-                                },
-                            ],
-                            position: coordinate.clone(),
-                        });
-                        circuit.variables.push(CircuitVariable {
-                            name: def.name.clone(),
-                            data: DigitalData::Wire(*bits, coordinate.clone()),
-                        });
+
+                        if circuit.is_top() {
+                            circuit.visual_elements.push(VisualElement {
+                                name: String::from("In"),
+                                attributes: vec![
+                                    Entry {
+                                        name: String::from("Label"),
+                                        value: EntryValue::String(def.name.clone()),
+                                    },
+                                    Entry {
+                                        name: String::from("Bits"),
+                                        value: EntryValue::Integer(*bits as i32),
+                                    },
+                                ],
+                                position: coordinate.clone(),
+                            });
+                            circuit.add_variable(CircuitVariable {
+                                name: def.name.clone(),
+                                data: DigitalData::Wire(*bits, coordinate.clone()),
+                            });
+                        }
                     }
                 }
                 Decorator::Out(bits) => {
@@ -144,42 +140,37 @@ impl ToDigital for VariableDefinitions {
                                 KnownBitWidth::Fixed(input_wire_position.get_size())
                             };
 
-                            let casted_value = cast_value(
-                                expression.width.clone(),
-                                target_width.clone(),
-                                input_wire_position,
-                                circuit,
-                            );
+                            let casted_value =
+                                cast_value(input_wire_position, target_width.clone(), circuit);
 
                             if let KnownBitWidth::Fixed(target_width_number) = target_width {
-                                circuit.visual_elements.push(VisualElement {
-                                    name: String::from("Out"),
-                                    attributes: vec![
-                                        Entry {
-                                            name: String::from("Label"),
-                                            value: EntryValue::String(def.name.clone()),
-                                        },
-                                        Entry {
-                                            name: String::from("Bits"),
-                                            value: EntryValue::Integer(target_width_number as i32),
-                                        },
-                                    ],
-                                    position: coordinate.clone(),
-                                });
-
-                                circuit.wires.push(Wire {
-                                    start: casted_value.clone(),
-                                    end: coordinate.clone(),
-                                });
-
-                                if let KnownBitWidth::Fixed(target_width) = target_width {
-                                    circuit.variables.push(CircuitVariable {
-                                        name: def.name.clone(),
-                                        data: DigitalData::Wire(target_width, casted_value),
+                                if circuit.is_top() {
+                                    circuit.visual_elements.push(VisualElement {
+                                        name: String::from("Out"),
+                                        attributes: vec![
+                                            Entry {
+                                                name: String::from("Label"),
+                                                value: EntryValue::String(def.name.clone()),
+                                            },
+                                            Entry {
+                                                name: String::from("Bits"),
+                                                value: EntryValue::Integer(
+                                                    target_width_number as i32,
+                                                ),
+                                            },
+                                        ],
+                                        position: coordinate.clone(),
                                     });
-                                } else {
-                                    panic!("a: Output variable {} has no value", def.name);
+
+                                    circuit.wires.push(Wire {
+                                        start: casted_value.clone(),
+                                        end: coordinate.clone(),
+                                    });
                                 }
+                                circuit.add_variable(CircuitVariable {
+                                    name: def.name.clone(),
+                                    data: DigitalData::Wire(target_width_number, casted_value),
+                                });
                             } else {
                                 panic!("b: Output variable {} has no value", def.name);
                             }

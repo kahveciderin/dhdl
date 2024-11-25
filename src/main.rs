@@ -31,7 +31,7 @@ fn main() {
 
     let ast = parse_program(input).unwrap();
 
-    println!("{:#?}", ast);
+    // println!("{:#?}", ast);
 
     let mut circuit = digital::Circuit::new();
     ast.convert_to_digital(&mut circuit);
