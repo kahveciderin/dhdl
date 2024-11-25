@@ -201,6 +201,20 @@ DHDL doesn't implement every single component in Digital. To use components that
 }
 ```
 
+Optionally, an external module can be renamed using the following syntax:
+
+```
+* MyCoolSixteenSegmentDisplay: SixteenSeg {
+    @in(16) value   @ (40, 140)
+    @in(1) dot      @ (60, 140)
+
+    segSize = 5
+    Color = rgba(255, 0, 0, 255)
+}
+```
+
+After the rename, the external module can be used as `MyCoolSixteenSegmentDisplay`.
+
 An external module can have inputs and outputs, just like a normal module. The inputs and outputs are defined using the `@in` and `@out` annotations, just like the global context, but the bit width is required. After each input and output, a position should be specified using the `@` symbol. The position is the position of the input or output on the component, relative to the component position. The position is specified as `(x, y)`, where `x` and `y` are the x and y coordinates of the input or output.
 
 After the inputs and outputs, the external module can have any number of attributes. These variables are used to configure the component.
@@ -214,6 +228,8 @@ The supported attribute types are:
 - `color` -> `attribute = rgba(255, 0, 0, 255)` or `attribute = rgb(255, 0, 0)`
 
 These can be determined by first using the component in Digital, saving the file and checking the generated XML file.
+
+The usage of an external module is no different from the usage of a normal module. The external module also returns an object.
 
 ## Macro Expansion
 
