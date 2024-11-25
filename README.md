@@ -83,7 +83,7 @@ number of bits that can represent the constant. Since we always work with unsign
 
 When using a wire in an expression, the width of the wire is automatically extended / reduced to the width of the expression. This is done by zero-extending the wire, or truncating the wire to its least-significant bits.
 
-Note that a wire cannot be assigned multiple times. This disallows any kind of feedback loops, so if you want to create a flip-flop, you have to import it as an external module with the external module syntax.
+Note that a wire cannot be assigned to multiple times. This disallows any kind of feedback loops, so if you want to create a flip-flop, you have to import it as an external module with the external module syntax.
 
 A wire can be designated as an input or an output. To do this, use the `@in` and `@out` annotations. The bit width of the input or output is specified in the parentheses. If the bit width is omitted, it defaults to 1 for an input, and gets inferred from usage for the output.
 
@@ -113,7 +113,7 @@ wire_b = a.3..7
 wire_c = a.2
 ```
 
-This will create a wire `wire_a` that is bits 0 to34 of `a`, a wire `wire_b` that is bits 3 to 7 of `a`, and a wire `wire_c` that is bit 2 of `a`.
+This will create a wire `wire_a` that is bits 0 to 3 of `a`, a wire `wire_b` that is bits 3 to 7 of `a`, and a wire `wire_c` that is bit 2 of `a`.
 
 If the slice is out of bounds, the rest of the bits are filled with zeros.
 
