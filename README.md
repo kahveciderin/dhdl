@@ -245,6 +245,7 @@ This project was created in a single day, from start to finish, so some features
 - Proper CLI
 - Testing
 - Digital .dig files -> DHDL for easy template editing
+- Proper positioning of components (currently, all components are placed diagonally for various reasons)
 
 ## Credits
 
