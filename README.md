@@ -1,5 +1,7 @@
 # DHDL
 
+![Logo](/logo.png)
+
 This repo contains a hardware description language that transpiles to [Digital](https://github.com/hneemann/Digital).
 
 ## Example
