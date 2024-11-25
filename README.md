@@ -244,6 +244,7 @@ This project was created in a single day, from start to finish, so some features
 - A preprocessor
 - Proper CLI
 - Testing
+- Digital .dig files -> DHDL for easy template editing
 
 ## Credits
 
