@@ -255,4 +255,4 @@ This project wouldn't be possible without the amazing work of [Helmut Neemann](h
 
 The syntax and the semantics are loosely inspired by Verilog.
 
-The DHDL logo is shamelessly stolen from the DHL logo. I hope they don't mind.
+The DHDL logo is shamelessly stolen from DHL. I hope they don't mind.
