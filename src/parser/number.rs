@@ -1,6 +1,6 @@
 use winnow::{combinator, token, PResult, Parser};
 
-use super::{whitespace::parse_whitespace, Stream};
+use super::{trivial_tokens::parse_minus, whitespace::parse_whitespace, Stream};
 
 pub fn parse_hex_number(input: &mut Stream) -> PResult<u32> {
     parse_whitespace(input)?;
@@ -50,4 +50,17 @@ pub fn parse_number(input: &mut Stream) -> PResult<u32> {
         parse_decimal_number,
     ))
     .parse_next(input)
+}
+
+pub fn parse_signed_number(input: &mut Stream) -> PResult<i32> {
+    parse_whitespace(input)?;
+
+    let sign = combinator::opt(parse_minus).parse_next(input)?;
+
+    let number = parse_number.parse_next(input)?;
+
+    Ok(match sign {
+        Some("-") => -(number as i32),
+        _ => number as i32,
+    })
 }

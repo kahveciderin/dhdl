@@ -1,3 +1,5 @@
+use std::{collections::HashMap, sync::Arc};
+
 use crate::{
     digital::{variable_definition::cast_value, Entry, EntryValue, VisualElement, Wire},
     parser::datatype::KnownBitWidth,
@@ -7,19 +9,20 @@ use crate::{
     utils::integer_width::integer_width,
 };
 
-use super::{Circuit, Coordinate, ToDigital};
+use super::{Circuit, Coordinate, DigitalData, ToDigital};
 
 impl ToDigital for ExpressionWithWidth {
-    fn convert_to_digital(&self, circuit: &mut Circuit) -> Vec<Coordinate> {
+    fn convert_to_digital(&self, circuit: &mut Circuit) -> DigitalData {
         self.expression.convert_to_digital(circuit)
     }
 }
 
 impl ToDigital for Expression {
-    fn convert_to_digital(&self, circuit: &mut Circuit) -> Vec<Coordinate> {
+    fn convert_to_digital(&self, circuit: &mut Circuit) -> DigitalData {
         match self {
             Expression::Integer(value) => {
                 let coordinate = Coordinate::next();
+                let width = integer_width(*value);
 
                 circuit.visual_elements.push(VisualElement {
                     name: String::from("Const"),
@@ -30,19 +33,19 @@ impl ToDigital for Expression {
                         },
                         Entry {
                             name: String::from("Bits"),
-                            value: EntryValue::Integer(integer_width(*value) as i32),
+                            value: EntryValue::Integer(width as i32),
                         },
                     ],
                     position: coordinate.clone(),
                 });
 
-                vec![coordinate]
+                DigitalData::Wire(width, coordinate)
             }
             Expression::Variable(variable) => {
                 let var = circuit.variables.iter().find(|v| v.name == *variable);
 
                 match var {
-                    Some(var) => vec![var.position.clone()],
+                    Some(var) => var.data.clone(),
                     None => panic!("Variable {} not found", variable),
                 }
             }
@@ -65,14 +68,14 @@ macro_rules! binary_op_inner {
         let lhs_casted = cast_value(
             $lhs.width.clone(),
             largest_type.clone(),
-            lhs_wire_positions[0].clone(),
+            lhs_wire_positions,
             $circuit,
         );
 
         let rhs_casted = cast_value(
             $rhs.width.clone(),
             largest_type.clone(),
-            rhs_wire_positions[0].clone(),
+            rhs_wire_positions,
             $circuit,
         );
 
@@ -166,7 +169,7 @@ macro_rules! binary_op_inner {
                 });
             }
 
-            vec![output_coordinate.add(20, 0)]
+            DigitalData::Wire(bit_width, output_coordinate.add(20, 0))
         } else {
             panic!("Trying to perform binary operation on object variables");
         }
@@ -184,7 +187,7 @@ macro_rules! match_binary_ops {
 }
 
 impl ToDigital for BinaryOp {
-    fn convert_to_digital(&self, circuit: &mut Circuit) -> Vec<Coordinate> {
+    fn convert_to_digital(&self, circuit: &mut Circuit) -> DigitalData {
         match_binary_ops!(
             self,
             circuit,
@@ -201,7 +204,7 @@ impl ToDigital for BinaryOp {
 }
 
 impl ToDigital for UnaryOp {
-    fn convert_to_digital(&self, circuit: &mut Circuit) -> Vec<Coordinate> {
+    fn convert_to_digital(&self, circuit: &mut Circuit) -> DigitalData {
         match self {
             UnaryOp::Not(expression) => {
                 if let KnownBitWidth::Fixed(bit_width) = expression.width {
@@ -246,7 +249,7 @@ impl ToDigital for UnaryOp {
                     let expression_wire_positions = expression.convert_to_digital(circuit);
 
                     circuit.wires.push(Wire {
-                        start: expression_wire_positions[0].clone(),
+                        start: expression_wire_positions.get_position().clone(),
                         end: splitter_coordinate.clone(),
                     });
 
@@ -270,7 +273,7 @@ impl ToDigital for UnaryOp {
                         });
                     }
 
-                    vec![output_coordinate.add(20, 0)]
+                    DigitalData::Wire(bit_width, output_coordinate.add(20, 0))
                 } else {
                     panic!("Trying to perform unary operation on object variables");
                 }
@@ -280,7 +283,7 @@ impl ToDigital for UnaryOp {
 }
 
 impl ToDigital for Combine {
-    fn convert_to_digital(&self, circuit: &mut Circuit) -> Vec<Coordinate> {
+    fn convert_to_digital(&self, circuit: &mut Circuit) -> DigitalData {
         match self {
             Combine::Bits(values) => {
                 let coordinate = Coordinate::next();
@@ -307,28 +310,38 @@ impl ToDigital for Combine {
                     let value_coordinate = coordinate.add(0, 20 * i as i64);
 
                     circuit.wires.push(Wire {
-                        start: expr_coordinate[0].clone(),
+                        start: expr_coordinate.get_position().clone(),
                         end: value_coordinate.clone(),
                     });
                 }
 
-                vec![coordinate.add(20, 0)]
+                DigitalData::Wire(values.len().try_into().unwrap(), coordinate.add(20, 0))
             }
-            Combine::Obj(_) => todo!("Combine::Obj"),
+            Combine::Obj(map) => {
+                let mut obj = HashMap::new();
+
+                for (key, value) in map {
+                    obj.insert(key.clone(), Arc::new(value.convert_to_digital(circuit)));
+                }
+
+                let ret = DigitalData::Object(obj);
+                println!("combine: {:?}", ret);
+                ret
+            }
         }
     }
 }
 
 impl ToDigital for Extract {
-    fn convert_to_digital(&self, circuit: &mut Circuit) -> Vec<Coordinate> {
-        match self.extract {
+    fn convert_to_digital(&self, circuit: &mut Circuit) -> DigitalData {
+        match &self.extract {
             ExtractInner::Bit(bit) => {
                 let coordinate = Coordinate::next();
 
                 let input = self.expression.convert_to_digital(circuit);
 
                 if let KnownBitWidth::Fixed(bit_width) = self.expression.width {
-                    if bit >= bit_width {
+                    if *bit >= bit_width {
                         circuit.visual_elements.push(VisualElement {
                             name: String::from("Const"),
                             attributes: vec![
@@ -344,7 +357,7 @@ impl ToDigital for Extract {
                             position: coordinate.clone(),
                         });
 
-                        vec![coordinate.clone()]
+                        DigitalData::Wire(1, coordinate.clone())
                     } else {
                         circuit.visual_elements.push(VisualElement {
                             name: String::from("Splitter"),
@@ -364,18 +377,64 @@ impl ToDigital for Extract {
                         });
 
                         circuit.wires.push(Wire {
-                            start: input[0].clone(),
+                            start: input.get_position().clone(),
                             end: coordinate.clone(),
                         });
 
-                        vec![coordinate.add(20, 0)]
+                        DigitalData::Wire(1, coordinate.add(20, 0))
                     }
                 } else {
                     panic!("Extracting a bit from an object variable")
                 }
             }
-            ExtractInner::Range(_, _) => todo!(),
-            ExtractInner::Name(_) => todo!(),
+            ExtractInner::Range(from, to) => {
+                let coordinate = Coordinate::next();
+
+                let input = self.expression.convert_to_digital(circuit);
+                let input_casted = cast_value(
+                    self.expression.width.clone(),
+                    KnownBitWidth::Fixed(to + 1),
+                    input,
+                    circuit,
+                );
+
+                circuit.visual_elements.push(VisualElement {
+                    name: String::from("Splitter"),
+                    attributes: vec![
+                        Entry {
+                            name: String::from("Input Splitting"),
+                            value: EntryValue::String((to + 1).to_string()),
+                        },
+                        Entry {
+                            name: String::from("Output Splitting"),
+                            value: EntryValue::String(from.to_string() + " - " + &to.to_string()),
+                        },
+                    ],
+                    position: coordinate.clone(),
+                });
+
+                circuit.wires.push(Wire {
+                    start: input_casted,
+                    end: coordinate.clone(),
+                });
+
+                DigitalData::Wire(1 + (to - from), coordinate.add(20, 0))
+            }
+            ExtractInner::Name(name) => {
+                let input = self.expression.convert_to_digital(circuit);
+
+                println!("extraction from: {:?}", input);
+
+                if let DigitalData::Object(obj) = input {
+                    if let Some(value) = obj.get(name) {
+                        value.as_ref().clone()
+                    } else {
+                        panic!("Object does not have key {}", name);
+                    }
+                } else {
+                    panic!("Extracting a key from a non-object variable");
+                }
+            }
         }
     }
 }

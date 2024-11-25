@@ -11,7 +11,6 @@ use crate::types::expression::{
 
 use super::{
     argument::parse_arguments_inner,
-    datatype::GetBitWidth,
     identifier::parse_identifier,
     number::parse_number,
     trivial_tokens::{
@@ -61,6 +60,7 @@ pub fn parse_term(input: &mut Stream) -> PResult<Expression> {
                 }))
             }
             "(" => {
+                println!("ModuleUse");
                 let arguments = combinator::terminated(parse_arguments_inner, parse_close_paren)
                     .parse_next(input)?;
 
@@ -200,6 +200,7 @@ fn parse_unary_expression(input: &mut Stream) -> PResult<Expression> {
     }
 }
 
+#[derive(Debug)]
 struct Range {
     start: u32,
     end: u32,
@@ -238,9 +239,10 @@ fn parse_range_extract(input: &mut Stream) -> PResult<ExtractInner> {
 fn parse_extract(input: &mut Stream) -> PResult<ExtractInner> {
     parse_whitespace(input)?;
 
-    alt((parse_bit_extract, parse_name_extract, parse_range_extract)).parse_next(input)
+    alt((parse_range_extract, parse_bit_extract, parse_name_extract)).parse_next(input)
 }
 
+#[derive(Debug)]
 enum CombineKey {
     Number(u32),
     MultiNumber(Vec<u32>),
@@ -252,7 +254,7 @@ enum CombineKey {
 fn parse_multi_number(input: &mut Stream) -> PResult<Vec<u32>> {
     parse_whitespace(input)?;
 
-    let numbers = combinator::separated(0.., parse_number, parse_comma).parse_next(input)?;
+    let numbers = combinator::separated(1.., parse_number, parse_comma).parse_next(input)?;
 
     Ok(numbers)
 }
@@ -260,7 +262,7 @@ fn parse_multi_identifier(input: &mut Stream) -> PResult<Vec<String>> {
     parse_whitespace(input)?;
 
     let identifiers =
-        combinator::separated(0.., parse_identifier.map(|s| s.to_string()), parse_comma)
+        combinator::separated(1.., parse_identifier.map(|s| s.to_string()), parse_comma)
             .parse_next(input)?;
 
     Ok(identifiers)
@@ -270,15 +272,14 @@ fn parse_combine_key(input: &mut Stream) -> PResult<CombineKey> {
     parse_whitespace(input)?;
 
     alt((
+        parse_multi_identifier.map(CombineKey::MultiIdentifier),
         parse_multi_number.map(CombineKey::MultiNumber),
         parse_range.map(CombineKey::NumberRange),
-        parse_number.map(CombineKey::Number),
-        parse_multi_identifier.map(CombineKey::MultiIdentifier),
-        parse_identifier.map(|s| CombineKey::Identifier(s.to_string())),
     ))
     .parse_next(input)
 }
 
+#[derive(Debug)]
 struct CombineKV {
     key: CombineKey,
     value: Expression,
@@ -302,6 +303,8 @@ fn parse_combine_expression(input: &mut Stream) -> PResult<Expression> {
 
     let kvs: Vec<_> =
         combinator::separated(0.., parse_combine_kv, parse_comma).parse_next(input)?;
+
+    println!("kvs: {:#?}", kvs);
 
     combinator::opt(parse_comma).parse_next(input)?; // optional trailing comma
 

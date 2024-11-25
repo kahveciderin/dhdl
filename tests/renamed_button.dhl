@@ -1,0 +1,7 @@
+* RenamedButton: Button {
+    @out(1) out @ (0, 0)
+}
+
+value = RenamedButton()
+
+@out result = value

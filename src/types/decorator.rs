@@ -2,6 +2,6 @@ pub type BitWidth = u32;
 
 #[derive(Debug)]
 pub enum Decorator {
-    Out(BitWidth),
+    Out(Option<BitWidth>),
     In(BitWidth),
 }

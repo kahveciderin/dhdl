@@ -1,26 +1,30 @@
 use crate::types::program::{Program, ProgramStatement};
 
-use super::{Coordinate, ToDigital};
+use super::{DigitalData, ToDigital};
 
 impl ToDigital for Program {
-    fn convert_to_digital(&self, circuit: &mut super::Circuit) -> Vec<Coordinate> {
+    fn convert_to_digital(&self, circuit: &mut super::Circuit) -> DigitalData {
         for statement in &self.statements {
             statement.convert_to_digital(circuit);
         }
 
-        vec![]
+        DigitalData::Empty
     }
 }
 
 impl ToDigital for ProgramStatement {
-    fn convert_to_digital(&self, circuit: &mut super::Circuit) -> Vec<Coordinate> {
+    fn convert_to_digital(&self, circuit: &mut super::Circuit) -> DigitalData {
         match self {
             ProgramStatement::VariableDefinitions(definitions) => {
                 definitions.convert_to_digital(circuit);
             }
-            ProgramStatement::Module(_) => {}
+            ProgramStatement::Expression(expr) => {
+                expr.convert_to_digital(circuit);
+            }
+            ProgramStatement::Module(_) => todo!("Module"),
+            ProgramStatement::ExternalModule(_) => todo!("ExternalModule"),
         }
 
-        vec![]
+        DigitalData::Empty
     }
 }

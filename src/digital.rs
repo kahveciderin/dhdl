@@ -1,3 +1,5 @@
+use std::{collections::HashMap, sync::Arc};
+
 use xmlwriter::XmlWriter;
 
 use crate::parser::datatype::KnownBitWidth;
@@ -8,8 +10,8 @@ mod variable_definition;
 
 #[derive(Debug, Clone)]
 pub struct Coordinate {
-    x: i64,
-    y: i64,
+    pub x: i64,
+    pub y: i64,
 }
 
 static mut current_coordinate: Coordinate = Coordinate { x: 0, y: 0 };
@@ -64,7 +66,7 @@ impl Wire {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum EntryValue {
     String(String),
     Integer(i32),
@@ -99,10 +101,10 @@ impl EntryValue {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Entry {
-    name: String,
-    value: EntryValue,
+    pub name: String,
+    pub value: EntryValue,
 }
 
 impl Entry {
@@ -145,8 +147,7 @@ impl VisualElement {
 
 pub struct CircuitVariable {
     name: String,
-    position: Coordinate,
-    width: KnownBitWidth,
+    data: DigitalData,
 }
 
 pub struct Circuit {
@@ -156,9 +157,45 @@ pub struct Circuit {
     variables: Vec<CircuitVariable>,
 }
 
+#[derive(Debug, Clone)]
+pub enum DigitalData {
+    Empty,
+    Wire(u32, Coordinate),
+    Object(HashMap<String, Arc<DigitalData>>),
+}
+
+impl DigitalData {
+    pub fn get_size(&self) -> u32 {
+        match self {
+            DigitalData::Empty => panic!("Empty data has no size"),
+            DigitalData::Wire(size, _) => *size,
+            DigitalData::Object(map) => {
+                if map.keys().len() != 1 {
+                    panic!("Object width has more than one key");
+                }
+
+                map.values().next().unwrap().as_ref().get_size()
+            }
+        }
+    }
+    pub fn get_position(&self) -> Coordinate {
+        match self {
+            DigitalData::Empty => panic!("Empty data has no position"),
+            DigitalData::Wire(size, position) => position.clone(),
+            DigitalData::Object(map) => {
+                if map.keys().len() != 1 {
+                    panic!("Object width has more than one key");
+                }
+
+                map.values().next().unwrap().as_ref().get_position()
+            }
+        }
+    }
+}
+
 pub trait ToDigital {
     // returns wire positions
-    fn convert_to_digital(&self, circuit: &mut Circuit) -> Vec<Coordinate>;
+    fn convert_to_digital(&self, circuit: &mut Circuit) -> DigitalData;
 }
 
 impl Circuit {

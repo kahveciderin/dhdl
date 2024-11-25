@@ -93,3 +93,11 @@ pub fn parse_open_scope<'s>(input: &mut Stream<'s>) -> PResult<&'s str> {
 pub fn parse_close_scope<'s>(input: &mut Stream<'s>) -> PResult<&'s str> {
     parse_multiple_chars(input, "}")
 }
+
+pub fn parse_star<'s>(input: &mut Stream<'s>) -> PResult<&'s str> {
+    parse_multiple_chars(input, "*")
+}
+
+pub fn parse_minus<'s>(input: &mut Stream<'s>) -> PResult<&'s str> {
+    parse_multiple_chars(input, "-")
+}

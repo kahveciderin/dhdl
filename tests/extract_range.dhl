@@ -1,0 +1,3 @@
+value = 0b0111
+
+@out(bits: 2) o = value.1..2

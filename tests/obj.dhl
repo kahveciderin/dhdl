@@ -1,0 +1,6 @@
+var = [
+    ad: 12,
+    fgh, hjk: 42
+]
+
+@out o = var.hjk

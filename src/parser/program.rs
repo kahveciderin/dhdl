@@ -1,18 +1,29 @@
 use winnow::{combinator, PResult, Parser};
 
-use crate::types::program::{Program, ProgramStatement};
+use crate::{
+    parser::expression::parse_expression,
+    types::program::{Program, ProgramStatement},
+};
 
 use super::{
-    module::parse_module, variable_definition::parse_variable_definitions,
-    whitespace::parse_whitespace, ParserModuleVariable, Stream,
+    module::{parse_external_module, parse_module},
+    variable_definition::parse_variable_definitions,
+    whitespace::parse_whitespace,
+    ParserModuleVariable, Stream,
 };
 
 pub fn parse_program_statement(input: &mut Stream) -> PResult<ProgramStatement> {
-    combinator::alt((
+    let ret = combinator::alt((
+        parse_external_module.map(ProgramStatement::ExternalModule),
         parse_module.map(ProgramStatement::Module),
         parse_variable_definitions.map(ProgramStatement::VariableDefinitions),
+        // parse_expression.map(ProgramStatement::Expression),
     ))
-    .parse_next(input)
+    .parse_next(input);
+
+    println!("{:#?}", ret);
+
+    ret
 }
 
 pub fn parse_program(input: &mut Stream) -> PResult<Program> {

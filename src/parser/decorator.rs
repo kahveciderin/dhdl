@@ -1,6 +1,9 @@
 use winnow::PResult;
 
-use crate::types::{decorator::Decorator, expression::{Expression, ExpressionWithWidth}};
+use crate::types::{
+    decorator::Decorator,
+    expression::{Expression, ExpressionWithWidth},
+};
 
 use super::{
     argument::parse_arguments, identifier::parse_identifier, trivial_tokens::parse_at,
@@ -18,24 +21,24 @@ pub fn parse_decorator(input: &mut Stream) -> PResult<Decorator> {
 
     match decorator {
         "out" => {
-            let bits = arguments.get("bits");
+            let bits = arguments.get("bits").or_else(|| arguments.get("0"));
 
             if let Some(bits) = bits {
                 let bits = bits.value.clone().expression;
 
                 if let Expression::Integer(bits) = bits {
-                    Ok(Decorator::Out(bits))
+                    Ok(Decorator::Out(Some(bits)))
                 } else {
                     Err(winnow::error::ErrMode::Backtrack(
                         winnow::error::ContextError::new(),
                     ))
                 }
             } else {
-                Ok(Decorator::Out(1))
+                Ok(Decorator::Out(None))
             }
         }
         "in" => {
-            let bits = arguments.get("bits");
+            let bits = arguments.get("bits").or_else(|| arguments.get("0"));
 
             if let Some(bits) = bits {
                 let bits = bits.value.clone().expression;

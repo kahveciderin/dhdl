@@ -1,0 +1,7 @@
+* Button {
+    @out(1) out @ (0, 0)
+}
+
+value = Button()
+
+@out result = value

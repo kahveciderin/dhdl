@@ -1,3 +1,5 @@
+use std::{collections::HashMap, sync::Arc};
+
 use crate::{
     parser::ParserState,
     types::expression::{BinaryOp, Combine, Expression, Extract, ExtractInner, UnaryOp},
@@ -18,7 +20,7 @@ impl GetBitWidth for Expression {
             Expression::BinaryOp(op) => op.get_bit_width(state),
             Expression::Extract(extract) => extract.get_bit_width(state),
             Expression::Combine(combine) => combine.get_bit_width(state),
-            Expression::ModuleUse(_) => todo!(),
+            Expression::ModuleUse(_) => todo!("ModuleUse"),
         }
     }
 }
@@ -46,10 +48,27 @@ impl GetBitWidth for BinaryOp {
 
 impl GetBitWidth for Extract {
     fn get_bit_width(&self, state: &ParserState) -> KnownBitWidth {
-        match self.extract {
+        match &self.extract {
             ExtractInner::Bit(_) => KnownBitWidth::Fixed(1),
-            ExtractInner::Range(start, end) => KnownBitWidth::Fixed((end - start) as u32),
-            ExtractInner::Name(_) => todo!(),
+            ExtractInner::Range(start, end) => {
+                if start > end {
+                    panic!("Start index must be less than or equal to end index");
+                }
+
+                KnownBitWidth::Fixed((1 + (end - start)) as u32)
+            }
+            ExtractInner::Name(key) => {
+                let self_bit_width = &self.expression.width;
+
+                if let KnownBitWidth::Object(map) = self_bit_width {
+                    map.get(key.as_str())
+                        .expect(&format!("Key {} not found in object", key))
+                        .as_ref()
+                        .clone()
+                } else {
+                    panic!("Extracting from non-object");
+                }
+            }
         }
     }
 }
@@ -58,7 +77,12 @@ impl GetBitWidth for Combine {
     fn get_bit_width(&self, state: &ParserState) -> KnownBitWidth {
         match self {
             Combine::Bits(bits) => KnownBitWidth::Fixed(bits.len() as u32),
-            Combine::Obj(_) => todo!(),
+            Combine::Obj(values) => KnownBitWidth::Object(
+                values
+                    .iter()
+                    .map(|(key, value)| (key.clone(), Arc::new(value.get_bit_width(state))))
+                    .collect(),
+            ),
         }
     }
 }
