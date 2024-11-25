@@ -1,0 +1,49 @@
+half_adder {
+    @in(1) a, b
+    
+    @out sum = a ^ b
+    @out carry = a & b
+}
+
+full_adder {
+    @in(1) a, b, c
+
+    ha_1 = half_adder(a: a, b: b)
+    ha_2 = half_adder(a: c, b: ha_1.sum)
+
+    @out sum = ha_2.sum
+    @out carry = ha_1.carry | ha_2.carry
+}
+
+adder_8_bit {
+    @in(8) a, b
+
+    out_0 = full_adder(a: a.0, b: b.0, c: 0)
+    out_1 = full_adder(a: a.1, b: b.1, c: out_0.carry)
+    out_2 = full_adder(a: a.2, b: b.2, c: out_1.carry)
+    out_3 = full_adder(a: a.3, b: b.3, c: out_2.carry)
+    out_4 = full_adder(a: a.4, b: b.4, c: out_3.carry)
+    out_5 = full_adder(a: a.5, b: b.5, c: out_4.carry)
+    out_6 = full_adder(a: a.6, b: b.6, c: out_5.carry)
+    out_7 = full_adder(a: a.7, b: b.7, c: out_6.carry)
+
+    @out sum = [
+        0: out_0.sum,
+        1: out_1.sum,
+        2: out_2.sum,
+        3: out_3.sum,
+        4: out_4.sum,
+        5: out_5.sum,
+        6: out_6.sum,
+        7: out_7.sum,
+    ]
+
+    @out carry = out_7.carry
+}
+
+@in(8) a
+@in(8) b
+
+result = adder_8_bit(a: a, b: b)
+@out sum = result.sum
+@out carry = result.carry
