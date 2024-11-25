@@ -4,5 +4,6 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+rand = "0.8.5"
 winnow = "0.6.20"
 xmlwriter = "0.1.0"

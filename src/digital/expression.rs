@@ -4,12 +4,13 @@ use crate::{
     digital::{variable_definition::cast_value, Entry, EntryValue, VisualElement, Wire},
     parser::datatype::KnownBitWidth,
     types::expression::{
-        BinaryOp, Combine, Expression, ExpressionWithWidth, Extract, ExtractInner, UnaryOp,
+        BinaryOp, Combine, Expression, ExpressionWithWidth, Extract, ExtractInner, ModuleUse,
+        UnaryOp,
     },
     utils::integer_width::integer_width,
 };
 
-use super::{Circuit, Coordinate, DigitalData, ToDigital};
+use super::{Circuit, CircuitModule, Coordinate, DigitalData, ToDigital};
 
 impl ToDigital for ExpressionWithWidth {
     fn convert_to_digital(&self, circuit: &mut Circuit) -> DigitalData {
@@ -53,7 +54,7 @@ impl ToDigital for Expression {
             Expression::BinaryOp(op) => op.convert_to_digital(circuit),
             Expression::Extract(extract) => extract.convert_to_digital(circuit),
             Expression::Combine(combine) => combine.convert_to_digital(circuit),
-            Expression::ModuleUse(_) => todo!("ModuleUse"),
+            Expression::ModuleUse(module_use) => module_use.convert_to_digital(circuit),
         }
     }
 }
@@ -435,6 +436,70 @@ impl ToDigital for Extract {
                     panic!("Extracting a key from a non-object variable");
                 }
             }
+        }
+    }
+}
+
+impl ToDigital for ModuleUse {
+    fn convert_to_digital(&self, circuit: &mut Circuit) -> DigitalData {
+        let module = circuit.find_module(&self.name).cloned();
+
+        if let Some(module) = module {
+            match module {
+                CircuitModule::Internal(module) => {
+                    todo!("internal module usage");
+                }
+
+                CircuitModule::External(module) => {
+                    let coordinate = Coordinate::next();
+
+                    circuit.visual_elements.push(VisualElement {
+                        name: module.name.clone(),
+                        attributes: module.attributes.clone(),
+                        position: coordinate.clone(),
+                    });
+
+                    for (key, value) in self.arguments.iter() {
+                        let wire_positions = value.value.convert_to_digital(circuit);
+
+                        if let DigitalData::Wire(_, position) = wire_positions {
+                            let additional_coordinate =
+                                module.inputs.iter().find(|v| v.name == *key);
+
+                            if let Some(additional_coordinate) = additional_coordinate {
+                                circuit.wires.push(Wire {
+                                    start: position,
+                                    end: coordinate.add(
+                                        additional_coordinate.position.x,
+                                        additional_coordinate.position.y,
+                                    ),
+                                });
+                            } else {
+                                panic!("Module argument {} not found", key);
+                            }
+                        } else {
+                            panic!("Module argument is not a wire");
+                        }
+                    }
+
+                    let mut map = HashMap::new();
+
+                    for output in module.outputs.iter() {
+                        let output_coordinate =
+                            coordinate.add(output.position.x, output.position.y);
+
+                        if let KnownBitWidth::Fixed(width) = output.width {
+                            let output_data = DigitalData::Wire(width, output_coordinate);
+
+                            map.insert(output.name.clone(), Arc::new(output_data));
+                        }
+                    }
+
+                    DigitalData::Object(map)
+                }
+            }
+        } else {
+            panic!("Module {} not found", self.name);
         }
     }
 }

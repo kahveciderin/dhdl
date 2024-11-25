@@ -12,6 +12,7 @@ use crate::{
         expression::ExpressionWithWidth,
         variable_definition::{VariableDefinition, VariableDefinitions},
     },
+    utils::random_name::unique_identifier,
 };
 
 use super::{
@@ -86,7 +87,7 @@ pub fn parse_variable_definitions(input: &mut Stream) -> PResult<VariableDefinit
             } else {
                 return Err(winnow::error::ErrMode::Backtrack(
                     winnow::error::ContextError::new(),
-                ))
+                ));
             }
         }
     }

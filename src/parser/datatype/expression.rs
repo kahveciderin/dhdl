@@ -2,7 +2,10 @@ use std::{collections::HashMap, sync::Arc};
 
 use crate::{
     parser::ParserState,
-    types::expression::{BinaryOp, Combine, Expression, Extract, ExtractInner, UnaryOp},
+    types::{
+        expression::{BinaryOp, Combine, Expression, Extract, ExtractInner, ModuleUse, UnaryOp},
+        module::Module,
+    },
     utils::integer_width::integer_width,
 };
 
@@ -20,7 +23,7 @@ impl GetBitWidth for Expression {
             Expression::BinaryOp(op) => op.get_bit_width(state),
             Expression::Extract(extract) => extract.get_bit_width(state),
             Expression::Combine(combine) => combine.get_bit_width(state),
-            Expression::ModuleUse(_) => todo!("ModuleUse"),
+            Expression::ModuleUse(module_use) => module_use.get_bit_width(state),
         }
     }
 }
@@ -84,5 +87,21 @@ impl GetBitWidth for Combine {
                     .collect(),
             ),
         }
+    }
+}
+
+impl GetBitWidth for ModuleUse {
+    fn get_bit_width(&self, state: &ParserState) -> KnownBitWidth {
+        let module = state
+            .find_module(&self.name)
+            .expect(&format!("Module {} not found", self.name));
+
+        let map = module
+            .outputs
+            .iter()
+            .map(|output| (output.name.clone(), Arc::new(output.width.clone())))
+            .collect();
+
+        KnownBitWidth::Object(map)
     }
 }

@@ -5,7 +5,7 @@ use crate::{
 
 use super::program::ProgramStatement;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Module {
     pub name: String,
     pub statements: Vec<ProgramStatement>,
@@ -21,9 +21,10 @@ pub struct ExternalModuleVariableData {
     pub position: Coordinate,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ExternalModule {
     pub name: String,
+    // todo: rename
     pub rename: Option<String>,
 
     pub attributes: Vec<Entry>,

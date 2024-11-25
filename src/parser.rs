@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use datatype::{GetBitWidth, KnownBitWidth};
 use winnow::{PResult, Stateful};
 
@@ -15,13 +17,13 @@ mod trivial_tokens;
 mod variable_definition;
 mod whitespace;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ParserModuleVariableData {
     pub name: String,
     pub width: KnownBitWidth,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum ParserModuleVariable {
     Input(ParserModuleVariableData),
     Output(ParserModuleVariableData),
@@ -38,29 +40,38 @@ impl GetBitWidth for ParserModuleVariable {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ParserModule {
+    name: String,
     variables: Vec<ParserModuleVariable>,
 }
 
 #[derive(Debug)]
+pub struct ParserModuleInOut {
+    pub inputs: Vec<ParserModuleVariableData>,
+    pub outputs: Vec<ParserModuleVariableData>,
+}
+
+#[derive(Debug)]
 pub struct ParserState {
-    modules: Vec<ParserModule>,
+    modules_stack: Vec<ParserModule>,
+    all_modules: HashMap<String, ParserModuleInOut>,
 }
 
 impl ParserState {
     pub fn new() -> Self {
         Self {
-            modules: vec![ParserModule::new()],
+            modules_stack: vec![ParserModule::new(String::from("$"))],
+            all_modules: HashMap::new(),
         }
     }
 
-    pub fn start_new_module(&mut self) {
-        self.modules.push(ParserModule::new());
+    pub fn start_new_module(&mut self, name: String) {
+        self.modules_stack.push(ParserModule::new(name));
     }
 
     pub fn current_module(&mut self) -> &mut ParserModule {
-        self.modules.last_mut().unwrap()
+        self.modules_stack.last_mut().unwrap()
     }
 
     pub fn add_variable(&mut self, variable: ParserModuleVariable) {
@@ -68,7 +79,7 @@ impl ParserState {
     }
 
     pub fn find_variable(&self, name: &str) -> Option<&ParserModuleVariable> {
-        for module in self.modules.iter().rev() {
+        for module in self.modules_stack.iter().rev() {
             for variable in &module.variables {
                 match variable {
                     ParserModuleVariable::Input(data) => {
@@ -93,15 +104,36 @@ impl ParserState {
         None
     }
 
+    pub fn find_module(&self, name: &str) -> Option<&ParserModuleInOut> {
+        self.all_modules.get(name)
+    }
+
     pub fn end_current_module(&mut self) -> ParserModule {
-        self.modules.pop().unwrap()
+        let module = self.modules_stack.pop().unwrap();
+
+        let mut inputs = vec![];
+        let mut outputs = vec![];
+
+        for variable in module.variables.iter() {
+            match variable {
+                ParserModuleVariable::Input(data) => inputs.push(data.clone()),
+                ParserModuleVariable::Output(data) => outputs.push(data.clone()),
+                ParserModuleVariable::Wire(_) => {}
+            }
+        }
+
+        self.all_modules
+            .insert(module.name.clone(), ParserModuleInOut { inputs, outputs });
+
+        module
     }
 }
 
 impl ParserModule {
-    pub fn new() -> Self {
+    pub fn new(name: String) -> Self {
         Self {
             variables: Vec::new(),
+            name,
         }
     }
 
@@ -118,5 +150,7 @@ pub fn parse_program(input: &str) -> PResult<Program> {
         state: ParserState::new(),
     };
 
-    program::parse_program(&mut stream)
+    let ret = program::parse_program(&mut stream);
+    println!("{:#?}", stream.state);
+    ret
 }

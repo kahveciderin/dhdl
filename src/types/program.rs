@@ -6,7 +6,7 @@ use super::{
     variable_definition::VariableDefinitions,
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum ProgramStatement {
     VariableDefinitions(VariableDefinitions),
     Module(Module),

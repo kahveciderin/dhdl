@@ -21,8 +21,12 @@ impl ToDigital for ProgramStatement {
             ProgramStatement::Expression(expr) => {
                 expr.convert_to_digital(circuit);
             }
-            ProgramStatement::Module(_) => todo!("Module"),
-            ProgramStatement::ExternalModule(_) => todo!("ExternalModule"),
+            ProgramStatement::Module(module) => {
+                module.convert_to_digital(circuit);
+            }
+            ProgramStatement::ExternalModule(module) => {
+                module.convert_to_digital(circuit);
+            }
         }
 
         DigitalData::Empty

@@ -17,7 +17,7 @@ pub fn parse_program_statement(input: &mut Stream) -> PResult<ProgramStatement> 
         parse_external_module.map(ProgramStatement::ExternalModule),
         parse_module.map(ProgramStatement::Module),
         parse_variable_definitions.map(ProgramStatement::VariableDefinitions),
-        // parse_expression.map(ProgramStatement::Expression),
+        parse_expression.map(ProgramStatement::Expression),
     ))
     .parse_next(input);
 

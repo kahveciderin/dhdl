@@ -2,9 +2,10 @@ use std::{collections::HashMap, sync::Arc};
 
 use xmlwriter::XmlWriter;
 
-use crate::parser::datatype::KnownBitWidth;
+use crate::types::module::{ExternalModule, Module};
 
 mod expression;
+mod module;
 mod program;
 mod variable_definition;
 
@@ -150,11 +151,27 @@ pub struct CircuitVariable {
     data: DigitalData,
 }
 
+#[derive(Debug, Clone)]
+pub enum CircuitModule {
+    Internal(Module),
+    External(ExternalModule),
+}
+
+impl CircuitModule {
+    pub fn get_name(&self) -> String {
+        match self {
+            CircuitModule::Internal(module) => module.name.clone(),
+            CircuitModule::External(module) => module.name.clone(),
+        }
+    }
+}
+
 pub struct Circuit {
     wires: Vec<Wire>,
     visual_elements: Vec<VisualElement>,
 
     variables: Vec<CircuitVariable>,
+    modules: Vec<CircuitModule>,
 }
 
 #[derive(Debug, Clone)]
@@ -205,7 +222,12 @@ impl Circuit {
             visual_elements: vec![],
 
             variables: vec![],
+            modules: vec![],
         }
+    }
+
+    pub fn find_module(&self, name: &str) -> Option<&CircuitModule> {
+        self.modules.iter().find(|module| module.get_name() == name)
     }
 
     pub fn to_xml(self) -> String {

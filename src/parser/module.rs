@@ -20,7 +20,7 @@ use super::{
         parse_open_paren, parse_open_scope, parse_star,
     },
     whitespace::parse_whitespace,
-    Stream,
+    ParserModuleVariableData, Stream,
 };
 
 enum ExternalModuleVariableType {
@@ -127,6 +127,8 @@ pub fn parse_external_module(input: &mut Stream) -> PResult<ExternalModule> {
 
     parse_open_scope(input)?;
 
+    input.state.start_new_module(name.clone());
+
     let body: Vec<_> =
         combinator::repeat_till(0.., parse_external_module_body_item, parse_close_scope)
             .map(|v| v.0)
@@ -139,12 +141,30 @@ pub fn parse_external_module(input: &mut Stream) -> PResult<ExternalModule> {
     for item in body.iter() {
         match item {
             ExternalModuleBodyItem::Variable(data, ty) => match ty {
-                ExternalModuleVariableType::Input => inputs.push(data.clone()),
-                ExternalModuleVariableType::Output => outputs.push(data.clone()),
+                ExternalModuleVariableType::Input => {
+                    inputs.push(data.clone());
+                    input.state.add_variable(ParserModuleVariable::Input(
+                        ParserModuleVariableData {
+                            name: data.name.clone(),
+                            width: data.width.clone(),
+                        },
+                    ));
+                }
+                ExternalModuleVariableType::Output => {
+                    outputs.push(data.clone());
+                    input.state.add_variable(ParserModuleVariable::Output(
+                        ParserModuleVariableData {
+                            name: data.name.clone(),
+                            width: data.width.clone(),
+                        },
+                    ));
+                }
             },
             ExternalModuleBodyItem::Attribute(entry) => attributes.push(entry.clone()),
         }
     }
+
+    input.state.end_current_module();
 
     Ok(ExternalModule {
         name,
@@ -162,7 +182,7 @@ pub fn parse_module(input: &mut Stream) -> PResult<Module> {
 
     parse_open_scope(input)?;
 
-    input.state.start_new_module();
+    input.state.start_new_module(name.clone());
 
     let statements = combinator::repeat_till(0.., parse_program_statement, parse_close_scope)
         .map(|v| v.0)
