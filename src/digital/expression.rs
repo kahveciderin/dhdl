@@ -317,8 +317,8 @@ impl ToDigital for Combine {
                     obj.insert(key.clone(), Arc::new(value.convert_to_digital(circuit)));
                 }
 
-                let ret = DigitalData::Object(obj);
-                ret
+                
+                DigitalData::Object(obj)
             }
         }
     }

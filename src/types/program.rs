@@ -1,4 +1,3 @@
-use crate::parser::ParserModuleVariableData;
 
 use super::{
     expression::Expression,

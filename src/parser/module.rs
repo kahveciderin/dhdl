@@ -67,8 +67,8 @@ fn parse_external_module_variable(
         ),
     )
     .map(|(x, y)| Coordinate {
-        x: x.into(),
-        y: y.into(),
+        x,
+        y,
     })
     .parse_next(input)?;
 
@@ -146,7 +146,7 @@ fn parse_long(input: &mut Stream) -> PResult<i64> {
 
 fn parse_entry_value(input: &mut Stream) -> PResult<EntryValue> {
     combinator::alt((
-        parse_long.map(|v| EntryValue::Long(v)),
+        parse_long.map(EntryValue::Long),
         parse_signed_number.map(|v| EntryValue::Integer(v as i32)),
         parse_string.map(|s| EntryValue::String(s.to_string())),
         parse_true.map(|_| EntryValue::Boolean(true)),

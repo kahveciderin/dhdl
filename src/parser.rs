@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use datatype::{GetBitWidth, KnownBitWidth};
 use winnow::{PResult, Stateful};
 
-use crate::types::{decorator::BitWidth, program::Program};
+use crate::types::program::Program;
 
 mod argument;
 pub mod datatype;

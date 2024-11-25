@@ -2,7 +2,7 @@ use winnow::PResult;
 
 use crate::types::{
     decorator::Decorator,
-    expression::{Expression, ExpressionWithWidth},
+    expression::Expression,
 };
 
 use super::{
