@@ -2,6 +2,8 @@ use winnow::{token, PResult, Parser};
 
 use super::Stream;
 
+pub const WHITESPACE: (char, char, char, char) = (' ', '\n', '\t', '\r'); 
+
 // todo: implement line breaking \
 // and multi-line comments
 fn parse_comment(input: &mut Stream) -> PResult<()> {
@@ -13,7 +15,7 @@ fn parse_comment(input: &mut Stream) -> PResult<()> {
 }
 
 fn parse_whitespace_inner(input: &mut Stream) -> PResult<()> {
-    token::take_while(0.., (' ', '\n', '\t', '\r'))
+    token::take_while(0.., WHITESPACE)
         .void()
         .parse_next(input)
 }

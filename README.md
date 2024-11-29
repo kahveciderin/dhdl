@@ -228,6 +228,7 @@ The supported attribute types are:
 - `string` -> `attribute = "string"`
 - `bool` -> `attribute = true` or `attribute = false`
 - `color` -> `attribute = rgba(255, 0, 0, 255)` or `attribute = rgb(255, 0, 0)`
+- `direction` -> `attribute = up` or `attribute = down` or `attribute = left` or `attribute = right`
 
 These can be determined by first using the component in Digital, saving the file and checking the generated XML file.
 

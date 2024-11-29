@@ -68,12 +68,21 @@ impl Wire {
 }
 
 #[derive(Debug, Clone)]
+pub enum EntryValueDirection {
+    Up,
+    Down,
+    Left,
+    Right,
+}
+
+#[derive(Debug, Clone)]
 pub enum EntryValue {
     String(String),
     Integer(i32),
     Long(i64),
     Boolean(bool),
     Color((u8, u8, u8, u8)),
+    Direction(EntryValueDirection),
 }
 
 impl EntryValue {
@@ -115,6 +124,16 @@ impl EntryValue {
                 w.write_text(&a.to_string());
                 w.end_element();
 
+                w.end_element();
+            }
+            EntryValue::Direction(d) => {
+                w.start_element("direction");
+                w.write_text(match d {
+                    EntryValueDirection::Up => "up",
+                    EntryValueDirection::Down => "down",
+                    EntryValueDirection::Left => "left",
+                    EntryValueDirection::Right => "right",
+                });
                 w.end_element();
             }
         }

@@ -317,7 +317,6 @@ impl ToDigital for Combine {
                     obj.insert(key.clone(), Arc::new(value.convert_to_digital(circuit)));
                 }
 
-                
                 DigitalData::Object(obj)
             }
         }
@@ -503,23 +502,24 @@ impl ToDigital for ModuleUse {
                     for (key, value) in self.arguments.iter() {
                         let wire_positions = value.value.convert_to_digital(circuit);
 
-                        if let DigitalData::Wire(_, position) = wire_positions {
-                            let additional_coordinate =
-                                module.inputs.iter().find(|v| v.name == *key);
+                        let additional_coordinate = module.inputs.iter().find(|v| v.name == *key);
 
-                            if let Some(additional_coordinate) = additional_coordinate {
-                                circuit.wires.push(Wire {
-                                    start: position,
-                                    end: coordinate.add(
-                                        additional_coordinate.position.x,
-                                        additional_coordinate.position.y,
-                                    ),
-                                });
-                            } else {
-                                panic!("Module argument {} not found", key);
-                            }
+                        if let Some(additional_coordinate) = additional_coordinate {
+                            let casted = cast_value(
+                                wire_positions,
+                                additional_coordinate.width.clone(),
+                                circuit,
+                            );
+
+                            circuit.wires.push(Wire {
+                                start: casted,
+                                end: coordinate.add(
+                                    additional_coordinate.position.x,
+                                    additional_coordinate.position.y,
+                                ),
+                            });
                         } else {
-                            panic!("Module argument is not a wire");
+                            panic!("Module argument {} not found", key);
                         }
                     }
 

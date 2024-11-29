@@ -1,7 +1,11 @@
-use winnow::{combinator, token, PResult, Parser};
+use winnow::{
+    combinator,
+    token::{self},
+    PResult, Parser,
+};
 
 use crate::{
-    digital::{Coordinate, Entry, EntryValue},
+    digital::{Coordinate, Entry, EntryValue, EntryValueDirection},
     parser::ParserModuleVariable,
     types::{
         expression::Expression,
@@ -17,8 +21,9 @@ use super::{
     program::parse_program_statement,
     trivial_tokens::{
         parse_L, parse_at, parse_backslash, parse_close_paren, parse_close_scope, parse_colon,
-        parse_comma, parse_equals, parse_false, parse_l, parse_open_paren, parse_open_scope,
-        parse_quote, parse_rgb, parse_rgba, parse_star, parse_true,
+        parse_comma, parse_down, parse_equals, parse_false, parse_l, parse_left, parse_open_paren,
+        parse_open_scope, parse_quote, parse_rgb, parse_rgba, parse_right, parse_star, parse_true,
+        parse_up,
     },
     whitespace::parse_whitespace,
     ParserModuleVariableData, Stream,
@@ -66,10 +71,7 @@ fn parse_external_module_variable(
             parse_close_paren,
         ),
     )
-    .map(|(x, y)| Coordinate {
-        x,
-        y,
-    })
+    .map(|(x, y)| Coordinate { x, y })
     .parse_next(input)?;
 
     Ok((
@@ -145,6 +147,8 @@ fn parse_long(input: &mut Stream) -> PResult<i64> {
 }
 
 fn parse_entry_value(input: &mut Stream) -> PResult<EntryValue> {
+    parse_whitespace(input)?;
+
     combinator::alt((
         parse_long.map(EntryValue::Long),
         parse_signed_number.map(|v| EntryValue::Integer(v as i32)),
@@ -153,7 +157,36 @@ fn parse_entry_value(input: &mut Stream) -> PResult<EntryValue> {
         parse_false.map(|_| EntryValue::Boolean(true)),
         parse_rgb_color.map(|(r, g, b, a)| EntryValue::Color((r, g, b, a))),
         parse_rgba_color.map(|(r, g, b, a)| EntryValue::Color((r, g, b, a))),
+        parse_up.map(|_| EntryValue::Direction(EntryValueDirection::Up)),
+        parse_down.map(|_| EntryValue::Direction(EntryValueDirection::Down)),
+        parse_left.map(|_| EntryValue::Direction(EntryValueDirection::Left)),
+        parse_right.map(|_| EntryValue::Direction(EntryValueDirection::Right)),
     ))
+    .parse_next(input)
+}
+
+fn parse_external_module_attribute_key_letter(input: &mut Stream) -> PResult<String> {
+    // do not parse whitespace
+
+    combinator::alt(("\\ ", "\\\\", token::take(1 as usize)))
+        .map(|s| match s {
+            "\\ " => " ",
+            "\\\\" => "\\",
+            s => s,
+        })
+        .map(|s| s.to_string())
+        .parse_next(input)
+}
+
+fn parse_external_module_attribute_key(input: &mut Stream) -> PResult<String> {
+    parse_whitespace(input)?;
+
+    combinator::repeat_till(
+        1..,
+        parse_external_module_attribute_key_letter,
+        parse_equals,
+    )
+    .map(|v: (Vec<_>, _)| v.0.join(""))
     .parse_next(input)
 }
 
@@ -161,8 +194,8 @@ fn parse_external_module_attribute(input: &mut Stream) -> PResult<Entry> {
     parse_whitespace(input)?;
 
     combinator::seq!(Entry {
-        name: parse_identifier.map(|s| s.to_string()),
-        value: combinator::preceded(parse_equals, parse_entry_value)
+        name: parse_external_module_attribute_key,
+        value: parse_entry_value,
     })
     .parse_next(input)
 }

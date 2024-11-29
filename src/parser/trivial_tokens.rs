@@ -116,3 +116,16 @@ pub fn parse_l<'s>(input: &mut Stream<'s>) -> PResult<&'s str> {
 pub fn parse_L<'s>(input: &mut Stream<'s>) -> PResult<&'s str> {
     parse_multiple_chars(input, "L")
 }
+
+pub fn parse_up<'s>(input: &mut Stream<'s>) -> PResult<&'s str> {
+    parse_multiple_chars(input, "up")
+}
+pub fn parse_down<'s>(input: &mut Stream<'s>) -> PResult<&'s str> {
+    parse_multiple_chars(input, "down")
+}
+pub fn parse_left<'s>(input: &mut Stream<'s>) -> PResult<&'s str> {
+    parse_multiple_chars(input, "left")
+}
+pub fn parse_right<'s>(input: &mut Stream<'s>) -> PResult<&'s str> {
+    parse_multiple_chars(input, "right")
+}

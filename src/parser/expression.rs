@@ -1,7 +1,7 @@
 use std::{collections::HashMap, sync::Arc};
 
 use winnow::{
-    combinator::{self, alt},
+    combinator::{self},
     PResult, Parser,
 };
 
@@ -39,7 +39,7 @@ pub fn parse_postfix_operator(input: &mut Stream) -> PResult<String> {
 pub fn parse_term(input: &mut Stream) -> PResult<Expression> {
     parse_whitespace(input)?;
 
-    let expression = alt((
+    let mut expression = combinator::alt((
         parse_variable_expression,
         parse_integer_expression,
         parse_combine_expression,
@@ -47,39 +47,41 @@ pub fn parse_term(input: &mut Stream) -> PResult<Expression> {
     ))
     .parse_next(input)?;
 
-    let postfix = parse_postfix_operator(input);
+    loop {
+        let postfix = parse_postfix_operator(input);
 
-    if let Ok(postfix) = postfix {
-        return match postfix.as_str() {
-            "." => {
-                let extract = parse_extract(input)?;
+        if let Ok(postfix) = postfix {
+            match postfix.as_str() {
+                "." => {
+                    let extract = parse_extract(input)?;
 
-                Ok(Expression::Extract(Extract {
-                    expression: Arc::new(ExpressionWithWidth::new(expression, &input.state)),
-                    extract,
-                }))
-            }
-            "(" => {
-                let arguments = combinator::terminated(parse_arguments_inner, parse_close_paren)
-                    .parse_next(input)?;
+                    expression = Expression::Extract(Extract {
+                        expression: Arc::new(ExpressionWithWidth::new(expression, &input.state)),
+                        extract,
+                    });
+                }
+                "(" => {
+                    let arguments =
+                        combinator::terminated(parse_arguments_inner, parse_close_paren)
+                            .parse_next(input)?;
 
-                if let Expression::Variable(expression) = expression {
-                    Ok(Expression::ModuleUse(ModuleUse {
-                        name: expression,
-                        arguments,
-                    }))
-                } else {
-                    Err(winnow::error::ErrMode::Backtrack(
+                    if let Expression::Variable(name) = expression {
+                        expression = Expression::ModuleUse(ModuleUse { name, arguments });
+                    } else {
+                        break Err(winnow::error::ErrMode::Backtrack(
+                            winnow::error::ContextError::new(),
+                        ));
+                    }
+                }
+                _ => {
+                    break Err(winnow::error::ErrMode::Backtrack(
                         winnow::error::ContextError::new(),
                     ))
                 }
-            }
-            _ => Err(winnow::error::ErrMode::Backtrack(
-                winnow::error::ContextError::new(),
-            )),
-        };
-    } else {
-        Ok(expression)
+            };
+        } else {
+            break Ok(expression);
+        }
     }
 }
 
@@ -112,7 +114,7 @@ fn parse_variable_expression(input: &mut Stream) -> PResult<Expression> {
 fn parse_binary_operator(input: &mut Stream) -> PResult<String> {
     parse_whitespace(input)?;
 
-    alt((
+    combinator::alt((
         parse_amperstand,
         parse_pipe,
         parse_caret,
@@ -189,7 +191,7 @@ fn parse_half_binary_operation(input: &mut Stream) -> PResult<HalfBinaryOp> {
 fn parse_unary_expression(input: &mut Stream) -> PResult<Expression> {
     parse_whitespace(input)?;
 
-    let (op, expr) = (alt((parse_bang,)), parse_expression).parse_next(input)?;
+    let (op, expr) = (combinator::alt((parse_bang,)), parse_expression).parse_next(input)?;
 
     match op {
         "!" => Ok(Expression::UnaryOp(UnaryOp::Not(Arc::new(
@@ -239,7 +241,7 @@ fn parse_range_extract(input: &mut Stream) -> PResult<ExtractInner> {
 fn parse_extract(input: &mut Stream) -> PResult<ExtractInner> {
     parse_whitespace(input)?;
 
-    alt((parse_range_extract, parse_bit_extract, parse_name_extract)).parse_next(input)
+    combinator::alt((parse_range_extract, parse_bit_extract, parse_name_extract)).parse_next(input)
 }
 
 #[derive(Debug)]
@@ -269,11 +271,14 @@ fn parse_multi_identifier(input: &mut Stream) -> PResult<Vec<String>> {
 fn parse_combine_key(input: &mut Stream) -> PResult<CombineKey> {
     parse_whitespace(input)?;
 
-    alt((
-        parse_multi_identifier.map(CombineKey::MultiIdentifier),
-        parse_multi_number.map(CombineKey::MultiNumber),
-        parse_range.map(CombineKey::NumberRange),
-    ))
+    combinator::terminated(
+        combinator::alt((
+            parse_range.map(CombineKey::NumberRange),
+            parse_multi_identifier.map(CombineKey::MultiIdentifier),
+            parse_multi_number.map(CombineKey::MultiNumber),
+        )),
+        parse_colon,
+    )
     .parse_next(input)
 }
 
@@ -288,7 +293,6 @@ fn parse_combine_kv(input: &mut Stream) -> PResult<CombineKV> {
 
     combinator::seq!(CombineKV {
         key: parse_combine_key,
-        _: parse_colon,
         value: parse_expression,
     })
     .parse_next(input)

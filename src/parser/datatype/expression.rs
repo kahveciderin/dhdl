@@ -14,7 +14,7 @@ impl GetBitWidth for Expression {
             Expression::Integer(number) => KnownBitWidth::Fixed(integer_width(*number)),
             Expression::Variable(variable) => state
                 .find_variable(variable)
-                .unwrap_or_else(|| panic!("Variable {} not found", variable))
+                .unwrap_or_else(|| panic!("! Variable {} not found", variable))
                 .get_bit_width(state),
             Expression::UnaryOp(op) => op.get_bit_width(state),
             Expression::BinaryOp(op) => op.get_bit_width(state),
