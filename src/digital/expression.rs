@@ -613,7 +613,7 @@ impl ToDigital for ModuleUse {
                                 ),
                             });
                         } else {
-                            panic!("Module argument {} not found", key);
+                            panic!("Module argument {} not found for module {}", key, self.name);
                         }
                     }
 

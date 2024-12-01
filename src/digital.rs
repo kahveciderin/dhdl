@@ -29,10 +29,10 @@ impl Coordinate {
 
             // we are incrementing both on purpose, to make sure wires
             // somehow don't overlap
-            CURRENT_COORDINATE.x += 60;
-            CURRENT_COORDINATE.y += 60;
+            CURRENT_COORDINATE.x += 100;
+            CURRENT_COORDINATE.y += 80;
 
-            if CURRENT_COORDINATE.x > 2000 {
+            if CURRENT_COORDINATE.x > 4000 {
                 CURRENT_COORDINATE.x = 0;
             }
             ret
@@ -234,7 +234,7 @@ impl DigitalData {
             DigitalData::Wire(size, _) => *size,
             DigitalData::Object(map) => {
                 if map.keys().len() != 1 {
-                    panic!("Object width has more than one key");
+                    panic!("! Object width has more than one key");
                 }
 
                 map.values().next().unwrap().as_ref().get_size()

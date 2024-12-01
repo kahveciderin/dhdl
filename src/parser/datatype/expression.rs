@@ -88,7 +88,7 @@ impl GetBitWidth for Extract {
                         .as_ref()
                         .clone()
                 } else {
-                    panic!("Extracting from non-object");
+                    panic!("Extracting key {} from non-object", key);
                 }
             }
         }

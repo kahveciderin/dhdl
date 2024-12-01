@@ -114,13 +114,6 @@ pub fn parse_rgba<'s>(input: &mut Stream<'s>) -> PResult<&'s str> {
     parse_multiple_chars(input, "rgba")
 }
 
-pub fn parse_l<'s>(input: &mut Stream<'s>) -> PResult<&'s str> {
-    parse_multiple_chars(input, "l")
-}
-pub fn parse_capital_l<'s>(input: &mut Stream<'s>) -> PResult<&'s str> {
-    parse_multiple_chars(input, "L")
-}
-
 pub fn parse_up<'s>(input: &mut Stream<'s>) -> PResult<&'s str> {
     parse_multiple_chars(input, "up")
 }

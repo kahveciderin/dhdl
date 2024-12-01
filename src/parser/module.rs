@@ -20,10 +20,9 @@ use super::{
     number::parse_signed_number,
     program::parse_program_statement,
     trivial_tokens::{
-        parse_at, parse_capital_l, parse_close_paren, parse_close_scope,
-        parse_colon, parse_comma, parse_down, parse_equals, parse_false, parse_l, parse_left,
-        parse_open_paren, parse_open_scope, parse_rgb, parse_rgba, parse_right,
-        parse_star, parse_true, parse_up,
+        parse_at, parse_close_paren, parse_close_scope, parse_colon, parse_comma, parse_down,
+        parse_equals, parse_false, parse_left, parse_open_paren, parse_open_scope, parse_rgb,
+        parse_rgba, parse_right, parse_star, parse_true, parse_up,
     },
     whitespace::parse_whitespace,
     ParserModuleVariableData, Stream,
@@ -124,11 +123,7 @@ fn parse_rgb_color(input: &mut Stream) -> PResult<(u8, u8, u8, u8)> {
 fn parse_long(input: &mut Stream) -> PResult<i64> {
     parse_whitespace(input)?;
 
-    combinator::terminated(
-        parse_signed_number,
-        combinator::alt((parse_l, parse_capital_l)),
-    )
-    .parse_next(input)
+    combinator::terminated(parse_signed_number, combinator::alt(("l", "L"))).parse_next(input)
 }
 
 fn parse_entry_value(input: &mut Stream) -> PResult<EntryValue> {
