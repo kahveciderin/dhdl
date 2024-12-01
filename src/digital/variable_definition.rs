@@ -1,3 +1,5 @@
+use std::cmp::Ordering;
+
 use crate::{
     digital::{CircuitVariable, Coordinate, Entry, EntryValue, VisualElement, Wire},
     parser::datatype::KnownBitWidth,
@@ -10,77 +12,81 @@ pub fn cast_value(value: DigitalData, to: KnownBitWidth, circuit: &mut Circuit) 
     let from = value.get_size();
     let to = to.get_size();
 
-    if from > to {
-        let coordinate = Coordinate::next();
+    match from.cmp(&to) {
+        Ordering::Greater => {
+            let coordinate = Coordinate::next();
 
-        circuit.visual_elements.push(VisualElement {
-            name: String::from("Splitter"),
-            attributes: vec![
-                Entry {
-                    name: String::from("Input Splitting"),
-                    value: EntryValue::String(from.to_string()),
-                },
-                Entry {
-                    name: String::from("Output Splitting"),
-                    value: EntryValue::String(to.to_string()),
-                },
-            ],
-            position: coordinate.clone(),
-        });
+            circuit.visual_elements.push(VisualElement {
+                name: String::from("Splitter"),
+                attributes: vec![
+                    Entry {
+                        name: String::from("Input Splitting"),
+                        value: EntryValue::String(from.to_string()),
+                    },
+                    Entry {
+                        name: String::from("Output Splitting"),
+                        value: EntryValue::String(to.to_string()),
+                    },
+                ],
+                position: coordinate.clone(),
+            });
 
-        circuit.wires.push(Wire {
-            start: value.get_position().clone(),
-            end: coordinate.clone(),
-        });
+            circuit.wires.push(Wire {
+                start: value.get_position().clone(),
+                end: coordinate.clone(),
+            });
 
-        coordinate.add(20, 0)
-    } else if from < to {
-        let constant_coordinate = Coordinate::next();
+            coordinate.add(20, 0)
+        }
+        Ordering::Less => {
+            let constant_coordinate = Coordinate::next();
 
-        circuit.visual_elements.push(VisualElement {
-            name: String::from("Const"),
-            attributes: vec![
-                Entry {
-                    name: String::from("Value"),
-                    value: EntryValue::Long(0),
-                },
-                Entry {
-                    name: String::from("Bits"),
-                    value: EntryValue::Integer((to - from) as i32),
-                },
-            ],
-            position: constant_coordinate.clone(),
-        });
+            circuit.visual_elements.push(VisualElement {
+                name: String::from("Const"),
+                attributes: vec![
+                    Entry {
+                        name: String::from("Value"),
+                        value: EntryValue::Long(0),
+                    },
+                    Entry {
+                        name: String::from("Bits"),
+                        value: EntryValue::Integer((to - from) as i32),
+                    },
+                ],
+                position: constant_coordinate.clone(),
+            });
 
-        let coordinate = Coordinate::next();
+            let coordinate = Coordinate::next();
 
-        circuit.visual_elements.push(VisualElement {
-            name: String::from("Splitter"),
-            attributes: vec![
-                Entry {
-                    name: String::from("Input Splitting"),
-                    value: EntryValue::String(from.to_string() + ", " + &(to - from).to_string()),
-                },
-                Entry {
-                    name: String::from("Output Splitting"),
-                    value: EntryValue::String(to.to_string()),
-                },
-            ],
-            position: coordinate.clone(),
-        });
+            circuit.visual_elements.push(VisualElement {
+                name: String::from("Splitter"),
+                attributes: vec![
+                    Entry {
+                        name: String::from("Input Splitting"),
+                        value: EntryValue::String(
+                            from.to_string() + ", " + &(to - from).to_string(),
+                        ),
+                    },
+                    Entry {
+                        name: String::from("Output Splitting"),
+                        value: EntryValue::String(to.to_string()),
+                    },
+                ],
+                position: coordinate.clone(),
+            });
 
-        circuit.wires.push(Wire {
-            start: constant_coordinate.clone(),
-            end: coordinate.add(0, 20),
-        });
-        circuit.wires.push(Wire {
-            start: value.get_position().clone(),
-            end: coordinate.clone(),
-        });
+            circuit.wires.push(Wire {
+                start: constant_coordinate.clone(),
+                end: coordinate.add(0, 20),
+            });
+            circuit.wires.push(Wire {
+                start: value.get_position().clone(),
+                end: coordinate.clone(),
+            });
 
-        coordinate.add(20, 0)
-    } else {
-        value.get_position()
+            coordinate.add(20, 0)
+        }
+        Ordering::Equal => value.get_position(),
     }
 }
 
@@ -88,21 +94,41 @@ impl ToDigital for VariableDefinitions {
     fn convert_to_digital(&self, circuit: &mut super::Circuit) -> DigitalData {
         match &self.decorator {
             None => {
+                // todo: find this variable in circuit, if it exists just connect to it
                 for def in self.definitions.iter() {
                     if let Some(expression) = &def.value {
                         let data = expression.convert_to_digital(circuit);
 
-                        circuit.add_variable(CircuitVariable {
-                            name: def.name.clone(),
-                            data,
-                        });
+                        let potential_variable = circuit.find_variable(def.name.clone()).cloned();
+
+                        if let Some(potential_variable) = potential_variable {
+                            if potential_variable.undefined {
+                                let casted_value = cast_value(
+                                    data,
+                                    KnownBitWidth::Fixed(potential_variable.data.get_size()),
+                                    circuit,
+                                );
+                                circuit.wires.push(Wire {
+                                    start: casted_value.clone(),
+                                    end: potential_variable.data.get_position().clone(),
+                                });
+                            } else {
+                                panic!("Variable {} already defined", def.name);
+                            }
+                        } else {
+                            circuit.add_variable(CircuitVariable {
+                                name: def.name.clone(),
+                                data,
+                                undefined: false,
+                            });
+                        }
                     } else {
                         panic!("Variable {} has no value", def.name);
                     }
                 }
             }
             Some(decorator) => match decorator {
-                Decorator::In(bits) => {
+                Decorator::In(bits, name) => {
                     for def in self.definitions.iter() {
                         let coordinate = Coordinate::next();
 
@@ -112,7 +138,9 @@ impl ToDigital for VariableDefinitions {
                                 attributes: vec![
                                     Entry {
                                         name: String::from("Label"),
-                                        value: EntryValue::String(def.name.clone()),
+                                        value: EntryValue::String(
+                                            name.clone().unwrap_or_else(|| def.name.clone()),
+                                        ),
                                     },
                                     Entry {
                                         name: String::from("Bits"),
@@ -124,11 +152,12 @@ impl ToDigital for VariableDefinitions {
                             circuit.add_variable(CircuitVariable {
                                 name: def.name.clone(),
                                 data: DigitalData::Wire(*bits, coordinate.clone()),
+                                undefined: false,
                             });
                         }
                     }
                 }
-                Decorator::Out(bits) => {
+                Decorator::Out(bits, name) => {
                     for def in self.definitions.iter() {
                         let coordinate = Coordinate::next();
                         if let Some(expression) = &def.value {
@@ -150,7 +179,10 @@ impl ToDigital for VariableDefinitions {
                                         attributes: vec![
                                             Entry {
                                                 name: String::from("Label"),
-                                                value: EntryValue::String(def.name.clone()),
+                                                value: EntryValue::String(
+                                                    name.clone()
+                                                        .unwrap_or_else(|| def.name.clone()),
+                                                ),
                                             },
                                             Entry {
                                                 name: String::from("Bits"),
@@ -170,6 +202,7 @@ impl ToDigital for VariableDefinitions {
                                 circuit.add_variable(CircuitVariable {
                                     name: def.name.clone(),
                                     data: DigitalData::Wire(target_width_number, casted_value),
+                                    undefined: false,
                                 });
                             } else {
                                 panic!("b: Output variable {} has no value", def.name);
@@ -177,6 +210,17 @@ impl ToDigital for VariableDefinitions {
                         } else {
                             panic!("c: Output variable {} has no value", def.name);
                         }
+                    }
+                }
+                Decorator::Wire(width) => {
+                    for def in self.definitions.iter() {
+                        let coordinate = Coordinate::next();
+
+                        circuit.add_variable(CircuitVariable {
+                            name: def.name.clone(),
+                            data: DigitalData::Wire(*width, coordinate.clone()),
+                            undefined: true,
+                        });
                     }
                 }
             },

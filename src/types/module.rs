@@ -17,6 +17,8 @@ pub struct Module {
 #[derive(Debug, Clone)]
 pub struct ExternalModuleVariableData {
     pub name: String,
+    pub external_name: String,
+
     pub width: KnownBitWidth,
     pub position: Coordinate,
 }

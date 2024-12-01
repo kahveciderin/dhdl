@@ -31,12 +31,12 @@ fn main() {
 
     let ast = parse_program(input).unwrap();
 
-    // println!("{:#?}", ast);
+    println!("{:#?}", ast);
 
     let mut circuit = digital::Circuit::new();
     ast.convert_to_digital(&mut circuit);
 
-    let output = circuit.to_xml();
+    let output = circuit.as_xml();
 
     let mut file = File::create(output_file_path).unwrap();
     file.write_all(output.as_bytes()).unwrap();

@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{panic, sync::Arc};
 
 use crate::{
     parser::ParserState,
@@ -21,12 +21,13 @@ impl GetBitWidth for Expression {
             Expression::Extract(extract) => extract.get_bit_width(state),
             Expression::Combine(combine) => combine.get_bit_width(state),
             Expression::ModuleUse(module_use) => module_use.get_bit_width(state),
+            Expression::String(_) => KnownBitWidth::Fixed(0),
         }
     }
 }
 
 impl GetBitWidth for UnaryOp {
-    fn get_bit_width(&self, state: &ParserState) -> KnownBitWidth {
+    fn get_bit_width(&self, _state: &ParserState) -> KnownBitWidth {
         match self {
             UnaryOp::Not(expr) => expr.width.clone(),
         }
@@ -42,12 +43,33 @@ impl GetBitWidth for BinaryOp {
             | BinaryOp::NOr(lhs, rhs)
             | BinaryOp::XOr(lhs, rhs)
             | BinaryOp::XNOr(lhs, rhs) => KnownBitWidth::max(lhs.width.clone(), rhs.width.clone()),
+
+            BinaryOp::Multiplex(lhs, ..) => {
+                // the lhs MUST be a Combine
+                if let Expression::Combine(Combine::Bits(lhs)) = &lhs.as_ref().expression {
+                    let max_size = lhs
+                        .iter()
+                        .map(|expr| {
+                            if let KnownBitWidth::Fixed(width) = expr.width {
+                                width
+                            } else {
+                                panic!("Unknown bit width at multiplexer lhs")
+                            }
+                        })
+                        .max()
+                        .unwrap_or_else(|| panic!("Multiplexer lhs is empty"));
+
+                    KnownBitWidth::Fixed(max_size)
+                } else {
+                    panic!("Multiplex lhs must be a Combine");
+                }
+            }
         }
     }
 }
 
 impl GetBitWidth for Extract {
-    fn get_bit_width(&self, state: &ParserState) -> KnownBitWidth {
+    fn get_bit_width(&self, _state: &ParserState) -> KnownBitWidth {
         match &self.extract {
             ExtractInner::Bit(_) => KnownBitWidth::Fixed(1),
             ExtractInner::Range(start, end) => {

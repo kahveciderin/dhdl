@@ -1,0 +1,9 @@
+@in r, s
+
+@wire t0, t1
+
+@out Q = r !| t0
+@out NotQ = s !| t1
+
+t0 = NotQ
+t1 = Q

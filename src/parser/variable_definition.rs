@@ -52,37 +52,51 @@ pub fn parse_variable_definitions(input: &mut Stream) -> PResult<VariableDefinit
     for definition in &definitions.definitions {
         if let Some(ref decorator) = definitions.decorator {
             let variable = match decorator {
-                Decorator::In(width) => ParserModuleVariable::Input(ParserModuleVariableData {
-                    name: definition.name.clone(),
-                    width: KnownBitWidth::Fixed(*width),
-                }),
-                Decorator::Out(width) => ParserModuleVariable::Output(ParserModuleVariableData {
-                    name: definition.name.clone(),
-                    width: if let Some(width) = width {
-                        KnownBitWidth::Fixed(*width)
-                    } else {
-                        definition
-                            .value
-                            .as_ref()
-                            .unwrap_or_else(|| {
-                                panic!("Output variable {} has no value", definition.name)
-                            })
-                            .width
-                            .clone()
-                    },
-                }),
+                Decorator::In(width, name) => {
+                    ParserModuleVariable::Input(ParserModuleVariableData {
+                        name: definition.name.clone(),
+                        external_name: name.clone().map_or(definition.name.clone(), |s| s),
+                        width: KnownBitWidth::Fixed(*width),
+                    })
+                }
+                Decorator::Out(width, name) => {
+                    ParserModuleVariable::Output(ParserModuleVariableData {
+                        name: definition.name.clone(),
+                        external_name: name.clone().map_or(definition.name.clone(), |s| s),
+                        width: if let Some(width) = width {
+                            KnownBitWidth::Fixed(*width)
+                        } else {
+                            definition
+                                .value
+                                .as_ref()
+                                .unwrap_or_else(|| {
+                                    panic!("Output variable {} has no value", definition.name)
+                                })
+                                .width
+                                .clone()
+                        },
+                    })
+                }
+                Decorator::Wire(width) => {
+                    ParserModuleVariable::UndefinedWire(ParserModuleVariableData {
+                        name: definition.name.clone(),
+                        external_name: definition.name.clone(),
+                        width: KnownBitWidth::Fixed(*width),
+                    })
+                }
             };
             input.state.add_variable(variable);
         } else {
             let expression = definition.value.as_ref();
 
             if let Some(expression) = expression {
-                input
-                    .state
-                    .add_variable(ParserModuleVariable::Wire(ParserModuleVariableData {
+                input.state.add_variable(ParserModuleVariable::DefinedWire(
+                    ParserModuleVariableData {
                         name: definition.name.clone(),
+                        external_name: definition.name.clone(),
                         width: expression.width.clone(),
-                    }));
+                    },
+                ));
             } else {
                 return Err(winnow::error::ErrMode::Backtrack(
                     winnow::error::ContextError::new(),

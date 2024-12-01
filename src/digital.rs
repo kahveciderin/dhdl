@@ -15,7 +15,7 @@ pub struct Coordinate {
     pub y: i64,
 }
 
-static mut current_coordinate: Coordinate = Coordinate { x: 0, y: 0 };
+static mut CURRENT_COORDINATE: Coordinate = Coordinate { x: 0, y: 0 };
 impl Coordinate {
     pub fn to_xml(&self, w: &mut XmlWriter) {
         w.write_attribute("x", &self.x.to_string());
@@ -25,15 +25,15 @@ impl Coordinate {
     pub fn next() -> Self {
         unsafe {
             // todo: make this look a bit nicer
-            let ret = current_coordinate.clone();
+            let ret = CURRENT_COORDINATE.clone();
 
             // we are incrementing both on purpose, to make sure wires
             // somehow don't overlap
-            current_coordinate.x += 60;
-            current_coordinate.y += 60;
+            CURRENT_COORDINATE.x += 60;
+            CURRENT_COORDINATE.y += 60;
 
-            if current_coordinate.x > 2000 {
-                current_coordinate.x = 0;
+            if CURRENT_COORDINATE.x > 2000 {
+                CURRENT_COORDINATE.x = 0;
             }
             ret
         }
@@ -184,10 +184,11 @@ impl VisualElement {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct CircuitVariable {
     name: String,
     data: DigitalData,
+    undefined: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -243,7 +244,7 @@ impl DigitalData {
     pub fn get_position(&self) -> Coordinate {
         match self {
             DigitalData::Empty => panic!("Empty data has no position"),
-            DigitalData::Wire(size, position) => position.clone(),
+            DigitalData::Wire(.., position) => position.clone(),
             DigitalData::Object(map) => {
                 if map.keys().len() != 1 {
                     panic!("Object width has more than one key");
@@ -300,7 +301,7 @@ impl Circuit {
         self.modules.iter().find(|module| module.get_name() == name)
     }
 
-    pub fn to_xml(self) -> String {
+    pub fn as_xml(&self) -> String {
         let mut w = XmlWriter::new(xmlwriter::Options {
             indent: xmlwriter::Indent::None,
             ..xmlwriter::Options::default()
@@ -317,13 +318,13 @@ impl Circuit {
         w.end_element();
 
         w.start_element("visualElements");
-        for visual_element in self.visual_elements {
+        for visual_element in &self.visual_elements {
             visual_element.to_xml(&mut w);
         }
         w.end_element();
 
         w.start_element("wires");
-        for wire in self.wires {
+        for wire in &self.wires {
             wire.to_xml(&mut w);
         }
         w.end_element();

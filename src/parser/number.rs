@@ -7,9 +7,9 @@ pub fn parse_hex_number(input: &mut Stream) -> PResult<u64> {
 
     "0x".parse_next(input)?;
 
-    token::take_while(2.., |c: char| c.is_ascii_hexdigit())
+    token::take_while(2.., |c: char| c.is_ascii_hexdigit() || c == '_')
         .parse_next(input)
-        .map(|s| u64::from_str_radix(s, 16).unwrap())
+        .map(|s| u64::from_str_radix(&s.replace("_", ""), 16).unwrap())
 }
 
 pub fn parse_binary_number(input: &mut Stream) -> PResult<u64> {
@@ -17,9 +17,9 @@ pub fn parse_binary_number(input: &mut Stream) -> PResult<u64> {
 
     "0b".parse_next(input)?;
 
-    token::take_while(2.., |c: char| c == '0' || c == '1')
+    token::take_while(2.., |c: char| c == '0' || c == '1' || c == '_')
         .parse_next(input)
-        .map(|s| u64::from_str_radix(s, 2).unwrap())
+        .map(|s| u64::from_str_radix(&s.replace("_", ""), 2).unwrap())
 }
 
 pub fn parse_octal_number(input: &mut Stream) -> PResult<u64> {
@@ -27,17 +27,17 @@ pub fn parse_octal_number(input: &mut Stream) -> PResult<u64> {
 
     "0o".parse_next(input)?;
 
-    token::take_while(2.., |c: char| c.is_ascii_digit())
+    token::take_while(2.., |c: char| (c == '_' || c.is_ascii_digit()) && c != '8' && c != '9')
         .parse_next(input)
-        .map(|s| u64::from_str_radix(s, 8).unwrap())
+        .map(|s| u64::from_str_radix(&s.replace("_", ""), 8).unwrap())
 }
 
 pub fn parse_decimal_number(input: &mut Stream) -> PResult<u64> {
     parse_whitespace(input)?;
 
-    token::take_while(1.., '0'..='9')
+    token::take_while(1.., |c: char| c.is_ascii_digit() || c == '_')
         .parse_next(input)
-        .map(|s| s.parse().unwrap())
+        .map(|s| u64::from_str_radix(&s.replace("_", ""), 10).unwrap())
 }
 
 pub fn parse_number(input: &mut Stream) -> PResult<u64> {

@@ -31,6 +31,7 @@ pub enum Expression {
     Extract(Extract),
     Combine(Combine),
     ModuleUse(ModuleUse),
+    String(String),
 }
 
 #[derive(Debug, Clone)]
@@ -52,6 +53,8 @@ pub enum BinaryOp {
     NOr(Arc<ExpressionWithWidth>, Arc<ExpressionWithWidth>),
     XOr(Arc<ExpressionWithWidth>, Arc<ExpressionWithWidth>),
     XNOr(Arc<ExpressionWithWidth>, Arc<ExpressionWithWidth>),
+
+    Multiplex(Arc<ExpressionWithWidth>, Arc<ExpressionWithWidth>),
 }
 
 #[derive(Debug, Clone)]
@@ -63,7 +66,7 @@ pub enum ExtractInner {
 
 #[derive(Debug, Clone)]
 pub enum Combine {
-    Bits(Vec<Expression>),
+    Bits(Vec<ExpressionWithWidth>),
     Obj(HashMap<String, Expression>),
 }
 

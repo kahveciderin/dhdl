@@ -96,6 +96,10 @@ pub fn parse_backslash<'s>(input: &mut Stream<'s>) -> PResult<&'s str> {
     parse_multiple_chars(input, "\\")
 }
 
+pub fn parse_percent<'s>(input: &mut Stream<'s>) -> PResult<&'s str> {
+    parse_multiple_chars(input, "%")
+}
+
 pub fn parse_true<'s>(input: &mut Stream<'s>) -> PResult<&'s str> {
     parse_multiple_chars(input, "true")
 }
@@ -113,7 +117,7 @@ pub fn parse_rgba<'s>(input: &mut Stream<'s>) -> PResult<&'s str> {
 pub fn parse_l<'s>(input: &mut Stream<'s>) -> PResult<&'s str> {
     parse_multiple_chars(input, "l")
 }
-pub fn parse_L<'s>(input: &mut Stream<'s>) -> PResult<&'s str> {
+pub fn parse_capital_l<'s>(input: &mut Stream<'s>) -> PResult<&'s str> {
     parse_multiple_chars(input, "L")
 }
 

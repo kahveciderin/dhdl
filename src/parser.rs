@@ -20,6 +20,7 @@ mod whitespace;
 #[derive(Debug, Clone)]
 pub struct ParserModuleVariableData {
     pub name: String,
+    pub external_name: String,
     pub width: KnownBitWidth,
 }
 
@@ -27,15 +28,17 @@ pub struct ParserModuleVariableData {
 pub enum ParserModuleVariable {
     Input(ParserModuleVariableData),
     Output(ParserModuleVariableData),
-    Wire(ParserModuleVariableData),
+    UndefinedWire(ParserModuleVariableData),
+    DefinedWire(ParserModuleVariableData),
 }
 
 impl GetBitWidth for ParserModuleVariable {
-    fn get_bit_width(&self, state: &ParserState) -> datatype::KnownBitWidth {
+    fn get_bit_width(&self, _state: &ParserState) -> datatype::KnownBitWidth {
         match self {
             ParserModuleVariable::Input(data) => data.width.clone(),
             ParserModuleVariable::Output(data) => data.width.clone(),
-            ParserModuleVariable::Wire(data) => data.width.clone(),
+            ParserModuleVariable::DefinedWire(data) => data.width.clone(),
+            ParserModuleVariable::UndefinedWire(data) => data.width.clone(),
         }
     }
 }
@@ -92,7 +95,12 @@ impl ParserState {
                             return Some(variable);
                         }
                     }
-                    ParserModuleVariable::Wire(data) => {
+                    ParserModuleVariable::DefinedWire(data) => {
+                        if data.name == name {
+                            return Some(variable);
+                        }
+                    }
+                    ParserModuleVariable::UndefinedWire(data) => {
                         if data.name == name {
                             return Some(variable);
                         }
@@ -118,7 +126,8 @@ impl ParserState {
             match variable {
                 ParserModuleVariable::Input(data) => inputs.push(data.clone()),
                 ParserModuleVariable::Output(data) => outputs.push(data.clone()),
-                ParserModuleVariable::Wire(_) => {}
+                ParserModuleVariable::DefinedWire(_) => {}
+                ParserModuleVariable::UndefinedWire(_) => {}
             }
         }
 

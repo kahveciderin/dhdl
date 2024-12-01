@@ -16,14 +16,14 @@ use crate::{
 use super::{
     argument::parse_arguments,
     datatype::KnownBitWidth,
-    identifier::parse_identifier,
+    identifier::{parse_identifier, parse_string},
     number::parse_signed_number,
     program::parse_program_statement,
     trivial_tokens::{
-        parse_L, parse_at, parse_backslash, parse_close_paren, parse_close_scope, parse_colon,
-        parse_comma, parse_down, parse_equals, parse_false, parse_l, parse_left, parse_open_paren,
-        parse_open_scope, parse_quote, parse_rgb, parse_rgba, parse_right, parse_star, parse_true,
-        parse_up,
+        parse_at, parse_capital_l, parse_close_paren, parse_close_scope,
+        parse_colon, parse_comma, parse_down, parse_equals, parse_false, parse_l, parse_left,
+        parse_open_paren, parse_open_scope, parse_rgb, parse_rgba, parse_right,
+        parse_star, parse_true, parse_up,
     },
     whitespace::parse_whitespace,
     ParserModuleVariableData, Stream,
@@ -60,6 +60,13 @@ fn parse_external_module_variable(
     } else {
         panic!("Bits argument must be a constant")
     };
+    let external_name = arguments.get("name").and_then(|arg| {
+        if let Expression::String(name) = arg.value.clone().expression {
+            Some(name)
+        } else {
+            None
+        }
+    });
 
     let variable_name = parse_identifier.map(|s| s.to_string()).parse_next(input)?;
 
@@ -76,38 +83,13 @@ fn parse_external_module_variable(
 
     Ok((
         ExternalModuleVariableData {
-            name: variable_name,
+            name: variable_name.clone(),
+            external_name: external_name.unwrap_or_else(|| variable_name.clone()),
             width: bit_count,
             position,
         },
         variable_type,
     ))
-}
-
-fn parse_string_character(input: &mut Stream) -> PResult<char> {
-    combinator::alt((
-        token::none_of(['\n', '\r', '"', '\\']),
-        combinator::preceded(parse_backslash, token::one_of(['n', 'r', '\"', '\\'])).map(
-            |c| match c {
-                'n' => '\n',
-                'r' => '\r',
-                '"' => '"',
-                '\\' => '\\',
-                _ => unreachable!(),
-            },
-        ),
-    ))
-    .parse_next(input)
-}
-
-fn parse_string(input: &mut Stream) -> PResult<String> {
-    parse_whitespace(input)?;
-
-    combinator::preceded(
-        parse_quote,
-        combinator::repeat_till(0.., parse_string_character, parse_quote).map(|v| v.0),
-    )
-    .parse_next(input)
 }
 
 fn parse_rgba_color(input: &mut Stream) -> PResult<(u8, u8, u8, u8)> {
@@ -142,8 +124,11 @@ fn parse_rgb_color(input: &mut Stream) -> PResult<(u8, u8, u8, u8)> {
 fn parse_long(input: &mut Stream) -> PResult<i64> {
     parse_whitespace(input)?;
 
-    combinator::terminated(parse_signed_number, combinator::alt((parse_l, parse_L)))
-        .parse_next(input)
+    combinator::terminated(
+        parse_signed_number,
+        combinator::alt((parse_l, parse_capital_l)),
+    )
+    .parse_next(input)
 }
 
 fn parse_entry_value(input: &mut Stream) -> PResult<EntryValue> {
@@ -168,7 +153,7 @@ fn parse_entry_value(input: &mut Stream) -> PResult<EntryValue> {
 fn parse_external_module_attribute_key_letter(input: &mut Stream) -> PResult<String> {
     // do not parse whitespace
 
-    combinator::alt(("\\ ", "\\\\", token::take(1 as usize)))
+    combinator::alt(("\\ ", "\\\\", token::take(1_usize)))
         .map(|s| match s {
             "\\ " => " ",
             "\\\\" => "\\",
@@ -254,6 +239,7 @@ pub fn parse_external_module(input: &mut Stream) -> PResult<ExternalModule> {
                     input.state.add_variable(ParserModuleVariable::Input(
                         ParserModuleVariableData {
                             name: data.name.clone(),
+                            external_name: data.external_name.clone(),
                             width: data.width.clone(),
                         },
                     ));
@@ -263,6 +249,7 @@ pub fn parse_external_module(input: &mut Stream) -> PResult<ExternalModule> {
                     input.state.add_variable(ParserModuleVariable::Output(
                         ParserModuleVariableData {
                             name: data.name.clone(),
+                            external_name: data.external_name.clone(),
                             width: data.width.clone(),
                         },
                     ));
@@ -305,7 +292,8 @@ pub fn parse_module(input: &mut Stream) -> PResult<Module> {
         match variable {
             ParserModuleVariable::Input(data) => inputs.push(data),
             ParserModuleVariable::Output(data) => outputs.push(data),
-            ParserModuleVariable::Wire(_) => {}
+            ParserModuleVariable::DefinedWire(_) => {}
+            ParserModuleVariable::UndefinedWire(_) => {}
         }
     }
 

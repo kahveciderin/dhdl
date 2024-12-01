@@ -1,3 +1,4 @@
+use core::panic;
 use std::{collections::HashMap, sync::Arc};
 
 use crate::{
@@ -57,6 +58,7 @@ impl ToDigital for Expression {
             Expression::Extract(extract) => extract.convert_to_digital(circuit),
             Expression::Combine(combine) => combine.convert_to_digital(circuit),
             Expression::ModuleUse(module_use) => module_use.convert_to_digital(circuit),
+            Expression::String(_) => panic!("Unexpected string"),
         }
     }
 }
@@ -175,24 +177,115 @@ macro_rules! match_binary_ops {
             $(BinaryOp::$name(lhs, rhs) => {
                 binary_op_inner!(lhs, rhs, $circuit, $gate_name, $end_x)
             })*
+
+            _ => unreachable!("Invalid binary operation"),
         }
     };
 }
 
 impl ToDigital for BinaryOp {
     fn convert_to_digital(&self, circuit: &mut Circuit) -> DigitalData {
-        match_binary_ops!(
-            self,
-            circuit,
-            [
-                And: "And" : 80,
-                NAnd: "NAnd" : 100,
-                Or: "Or" : 80,
-                NOr: "NOr" : 100,
-                XOr: "XOr" : 80,
-                XNOr: "XNOr" : 100
-            ]
-        )
+        match self {
+            BinaryOp::Multiplex(lhs, rhs) => {
+                // we do not trust the width of the lhs, since the Combine is
+                // not really made for this use case
+
+                if let Expression::Combine(Combine::Bits(lhs)) = &lhs.as_ref().expression {
+                    let output_coordinate = Coordinate::next();
+                    let selector_bits = integer_width(lhs.len() as u32);
+                    let max_size = lhs
+                        .iter()
+                        .map(|expr| {
+                            if let KnownBitWidth::Fixed(width) = expr.width {
+                                width
+                            } else {
+                                panic!("Unknown bit width at multiplexer lhs")
+                            }
+                        })
+                        .max()
+                        .unwrap_or_else(|| panic!("Multiplexer lhs is empty"));
+
+                    circuit.visual_elements.push(VisualElement {
+                        name: String::from("Multiplexer"),
+                        attributes: vec![
+                            Entry {
+                                name: String::from("Bits"),
+                                value: EntryValue::Integer(max_size as i32),
+                            },
+                            Entry {
+                                name: String::from("Selector Bits"),
+                                value: EntryValue::Integer(selector_bits as i32),
+                            },
+                        ],
+                        position: output_coordinate.clone(),
+                    });
+
+                    let selector_position = rhs.convert_to_digital(circuit);
+                    let selector_casted = cast_value(
+                        selector_position,
+                        KnownBitWidth::Fixed(selector_bits),
+                        circuit,
+                    );
+                    let selector_input_y = 20 * (1 << selector_bits);
+
+                    circuit.wires.push(Wire {
+                        start: selector_casted,
+                        end: output_coordinate.add(20, selector_input_y),
+                    });
+
+                    for i in 0..(1 << selector_bits) {
+                        let wire_position = if let Some(expr) = lhs.get(i) {
+                            expr.convert_to_digital(circuit)
+                        } else {
+                            let new_coordinate = Coordinate::next();
+                            circuit.visual_elements.push(VisualElement {
+                                name: String::from("Const"),
+                                attributes: vec![
+                                    Entry {
+                                        name: String::from("Value"),
+                                        value: EntryValue::Long(0),
+                                    },
+                                    Entry {
+                                        name: String::from("Bits"),
+                                        value: EntryValue::Integer(1),
+                                    },
+                                ],
+                                position: new_coordinate.clone(),
+                            });
+
+                            DigitalData::Wire(1, new_coordinate.clone())
+                        };
+                        let casted =
+                            cast_value(wire_position, KnownBitWidth::Fixed(max_size), circuit);
+
+                        circuit.wires.push(Wire {
+                            start: casted,
+                            end: output_coordinate.add(0, 20 * i as i64),
+                        });
+                    }
+
+                    DigitalData::Wire(
+                        max_size,
+                        output_coordinate.add(40, 10 * (1 << selector_bits)),
+                    )
+                } else {
+                    panic!("Multiplexer lhs must be a Combine");
+                }
+            }
+
+            _ => match_binary_ops!(
+                self,
+                circuit,
+                [
+                    And: "And" : 80,
+                    NAnd: "NAnd" : 100,
+                    Or: "Or" : 80,
+                    NOr: "NOr" : 100,
+                    XOr: "XOr" : 80,
+                    XNOr: "XNOr" : 100
+                ]
+            ),
+        }
     }
 }
 
@@ -456,6 +549,7 @@ impl ToDigital for ModuleUse {
                             circuit.add_variable(CircuitVariable {
                                 name: input.name.clone(),
                                 data: DigitalData::Wire(width, input_data),
+                                undefined: false,
                             });
                         } else {
                             panic!("Width of input is not fixed")

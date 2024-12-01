@@ -83,9 +83,37 @@ number of bits that can represent the constant. Since we always work with unsign
 
 When using a wire in an expression, the width of the wire is automatically extended / reduced to the width of the expression. This is done by zero-extending the wire, or truncating the wire to its least-significant bits.
 
-Note that a wire cannot be assigned to multiple times. This disallows any kind of feedback loops, so if you want to create a flip-flop, you have to import it as an external module with the external module syntax.
+Note that a standard wire cannot be assigned to multiple times. This disallows any kind of feedback loops, so if you want to create a flip-flop, you either have to import it as an external module with the external module syntax, or use the `@wire` annotation.
 
-A wire can be designated as an input or an output. To do this, use the `@in` and `@out` annotations. The bit width of the input or output is specified in the parentheses. If the bit width is omitted, it defaults to 1 for an input, and gets inferred from usage for the output.
+To use the `@wire` annotation, use the following syntax:
+
+```
+@wire(8) wire_name
+```
+
+This will create a wire with the name `wire_name` and a bit width of 8 (The bit width defaults to 1 if omitted). The wire can then be assigned to multiple times.
+
+```
+wire_name = a
+```
+
+A wire can also be designated as an input or an output. To do this, use the `@in` and `@out` annotations. The bit width of the input or output is specified in the parentheses. If the bit width is omitted, it defaults to 1 for an input, and gets inferred from usage for the output.
+
+### More on the `@wire` annotation
+
+Here is an example of how to use the `@wire` annotation to build an RS flip-flop:
+
+```
+@in r, s
+
+@wire t0, t1
+
+@out Q = r !| t0
+@out NotQ = s !| t1
+
+t0 = NotQ
+t1 = Q
+```
 
 ### Logic gates
 
@@ -156,6 +184,19 @@ If an object only has a single value, the value can be accessed directly without
 ```
 data
 ```
+
+### Conditional Multiplexing
+
+Sometimes, we might want to select between two wires based on a condition. This can be done using the conditional multiplexing syntax. The syntax is as follows:
+
+```
+[
+    0: wire_a,
+    1, 2, 3: wire_b,
+] % condition
+```
+
+This will select `wire_a` if `condition` is 0, and `wire_b` if `condition` is 1, 2, or 3. If the condition is out of bounds, the result is 0.
 
 ### Modules
 

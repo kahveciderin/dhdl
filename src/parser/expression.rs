@@ -11,12 +11,13 @@ use crate::types::expression::{
 
 use super::{
     argument::parse_arguments_inner,
-    identifier::parse_identifier,
+    identifier::{parse_identifier, parse_string},
     number::parse_number_u32,
     trivial_tokens::{
         parse_amperstand, parse_bang, parse_bang_amperstand, parse_bang_caret, parse_bang_pipe,
         parse_caret, parse_close_paren, parse_close_square_bracket, parse_colon, parse_comma,
-        parse_dot, parse_double_dot, parse_open_paren, parse_open_square_bracket, parse_pipe,
+        parse_dot, parse_double_dot, parse_open_paren, parse_open_square_bracket, parse_percent,
+        parse_pipe,
     },
     whitespace::parse_whitespace,
     Stream,
@@ -42,6 +43,7 @@ pub fn parse_term(input: &mut Stream) -> PResult<Expression> {
     let mut expression = combinator::alt((
         parse_variable_expression,
         parse_integer_expression,
+        parse_string.map(Expression::String),
         parse_combine_expression,
         parse_paren_expression,
     ))
@@ -121,6 +123,7 @@ fn parse_binary_operator(input: &mut Stream) -> PResult<String> {
         parse_bang_amperstand,
         parse_bang_pipe,
         parse_bang_caret,
+        parse_percent,
     ))
     .map(|s| s.to_string())
     .parse_next(input)
@@ -163,6 +166,11 @@ fn parse_binary_expression(input: &mut Stream) -> PResult<Expression> {
                 Arc::new(ExpressionWithWidth::new(rhs, &input.state)),
             ),
             "!^" => BinaryOp::XNOr(
+                Arc::new(ExpressionWithWidth::new(lhs, &input.state)),
+                Arc::new(ExpressionWithWidth::new(rhs, &input.state)),
+            ),
+
+            "%" => BinaryOp::Multiplex(
                 Arc::new(ExpressionWithWidth::new(lhs, &input.state)),
                 Arc::new(ExpressionWithWidth::new(rhs, &input.state)),
             ),
@@ -352,9 +360,15 @@ fn parse_combine_expression(input: &mut Stream) -> PResult<Expression> {
             let mut values = Vec::new();
             for i in 0..=largest {
                 if map.contains_key(&i) {
-                    values.push(map.get(&i).unwrap().clone());
+                    values.push(ExpressionWithWidth::new(
+                        map.get(&i).unwrap().clone(),
+                        &input.state,
+                    ));
                 } else {
-                    values.push(Expression::Integer(0));
+                    values.push(ExpressionWithWidth::new(
+                        Expression::Integer(0),
+                        &input.state,
+                    ));
                 }
             }
 
