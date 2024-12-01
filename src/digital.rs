@@ -1,5 +1,6 @@
 use std::{collections::HashMap, sync::Arc};
 
+use rand::Rng;
 use xmlwriter::XmlWriter;
 
 use crate::types::module::{ExternalModule, Module};
@@ -16,6 +17,7 @@ pub struct Coordinate {
 }
 
 static mut CURRENT_COORDINATE: Coordinate = Coordinate { x: 0, y: 0 };
+static mut LOOP_COUNT: i64 = 0;
 impl Coordinate {
     pub fn to_xml(&self, w: &mut XmlWriter) {
         w.write_attribute("x", &self.x.to_string());
@@ -23,17 +25,20 @@ impl Coordinate {
     }
 
     pub fn next() -> Self {
+        let mut rng = rand::thread_rng();
+
         unsafe {
             // todo: make this look a bit nicer
             let ret = CURRENT_COORDINATE.clone();
 
             // we are incrementing both on purpose, to make sure wires
             // somehow don't overlap
-            CURRENT_COORDINATE.x += 100;
-            CURRENT_COORDINATE.y += 80;
+            CURRENT_COORDINATE.x += 500 + rng.gen_range(-5..=5) * 20;
+            CURRENT_COORDINATE.y += 300+ rng.gen_range(-5..=5) * 20;
 
-            if CURRENT_COORDINATE.x > 4000 {
-                CURRENT_COORDINATE.x = 0;
+            if CURRENT_COORDINATE.x > 5000 {
+                CURRENT_COORDINATE.x = (LOOP_COUNT * 20) % 500;
+                LOOP_COUNT += 1;
             }
             ret
         }
@@ -83,6 +88,7 @@ pub enum EntryValue {
     Boolean(bool),
     Color((u8, u8, u8, u8)),
     Direction(EntryValueDirection),
+    Data(String),
 }
 
 impl EntryValue {
@@ -90,6 +96,11 @@ impl EntryValue {
         match self {
             EntryValue::String(s) => {
                 w.start_element("string");
+                w.write_text(s);
+                w.end_element();
+            }
+            EntryValue::Data(s) => {
+                w.start_element("data");
                 w.write_text(s);
                 w.end_element();
             }

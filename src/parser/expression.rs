@@ -199,7 +199,7 @@ fn parse_half_binary_operation(input: &mut Stream) -> PResult<HalfBinaryOp> {
 fn parse_unary_expression(input: &mut Stream) -> PResult<Expression> {
     parse_whitespace(input)?;
 
-    let (op, expr) = (combinator::alt((parse_bang,)), parse_expression).parse_next(input)?;
+    let (op, expr) = (combinator::alt((parse_bang,)), parse_term).parse_next(input)?;
 
     match op {
         "!" => Ok(Expression::UnaryOp(UnaryOp::Not(Arc::new(

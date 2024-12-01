@@ -126,6 +126,12 @@ fn parse_long(input: &mut Stream) -> PResult<i64> {
     combinator::terminated(parse_signed_number, combinator::alt(("l", "L"))).parse_next(input)
 }
 
+fn parse_data(input: &mut Stream) -> PResult<String> {
+    parse_whitespace(input)?;
+
+    combinator::preceded("d", parse_string).parse_next(input)
+}
+
 fn parse_entry_value(input: &mut Stream) -> PResult<EntryValue> {
     parse_whitespace(input)?;
 
@@ -141,6 +147,7 @@ fn parse_entry_value(input: &mut Stream) -> PResult<EntryValue> {
         parse_down.map(|_| EntryValue::Direction(EntryValueDirection::Down)),
         parse_left.map(|_| EntryValue::Direction(EntryValueDirection::Left)),
         parse_right.map(|_| EntryValue::Direction(EntryValueDirection::Right)),
+        parse_data.map(EntryValue::Data),
     ))
     .parse_next(input)
 }
