@@ -62,6 +62,20 @@ pub fn parse_decorator(input: &mut Stream) -> PResult<Decorator> {
 
             Ok(Decorator::In(bits, name))
         }
+        "clock" => {
+            let freq = arguments
+                .get("freq")
+                .or_else(|| arguments.get("0"))
+                .and_then(|arg| {
+                    if let Expression::Integer(bits) = arg.value.clone().expression {
+                        Some(bits)
+                    } else {
+                        None
+                    }
+                });
+
+            Ok(Decorator::Clock(freq))
+        }
         "wire" => {
             let bits = arguments
                 .get("bits")

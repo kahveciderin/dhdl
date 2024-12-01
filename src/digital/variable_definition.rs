@@ -157,6 +157,43 @@ impl ToDigital for VariableDefinitions {
                         }
                     }
                 }
+                Decorator::Clock(freq) => {
+                    for def in self.definitions.iter() {
+                        let coordinate = Coordinate::next();
+
+                        let mut attributes = vec![Entry {
+                            name: String::from("Label"),
+                            value: EntryValue::String(def.name.clone()),
+                        }];
+
+                        if let Some(freq) = freq {
+                            attributes.push(Entry {
+                                name: String::from("Frequency"),
+                                value: EntryValue::Integer(*freq as i32),
+                            });
+                            attributes.push(Entry {
+                                name: String::from("runRealTime"),
+                                value: EntryValue::Boolean(true),
+                            })
+                        } else {
+                            attributes.push(Entry {
+                                name: String::from("runRealTime"),
+                                value: EntryValue::Boolean(false),
+                            })
+                        }
+
+                        circuit.visual_elements.push(VisualElement {
+                            name: String::from("Clock"),
+                            attributes,
+                            position: coordinate.clone(),
+                        });
+                        circuit.add_variable(CircuitVariable {
+                            name: def.name.clone(),
+                            data: DigitalData::Wire(1, coordinate.clone()),
+                            undefined: false,
+                        });
+                    }
+                }
                 Decorator::Out(bits, name) => {
                     for def in self.definitions.iter() {
                         let coordinate = Coordinate::next();

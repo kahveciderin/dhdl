@@ -28,6 +28,7 @@ pub struct ParserModuleVariableData {
 pub enum ParserModuleVariable {
     Input(ParserModuleVariableData),
     Output(ParserModuleVariableData),
+    Clock(ParserModuleVariableData),
     UndefinedWire(ParserModuleVariableData),
     DefinedWire(ParserModuleVariableData),
 }
@@ -36,6 +37,7 @@ impl GetBitWidth for ParserModuleVariable {
     fn get_bit_width(&self, _state: &ParserState) -> datatype::KnownBitWidth {
         match self {
             ParserModuleVariable::Input(data) => data.width.clone(),
+            ParserModuleVariable::Clock(data) => data.width.clone(),
             ParserModuleVariable::Output(data) => data.width.clone(),
             ParserModuleVariable::DefinedWire(data) => data.width.clone(),
             ParserModuleVariable::UndefinedWire(data) => data.width.clone(),
@@ -105,6 +107,11 @@ impl ParserState {
                             return Some(variable);
                         }
                     }
+                    ParserModuleVariable::Clock(data) => {
+                        if data.name == name {
+                            return Some(variable);
+                        }
+                    }
                 }
             }
         }
@@ -125,6 +132,7 @@ impl ParserState {
         for variable in module.variables.iter() {
             match variable {
                 ParserModuleVariable::Input(data) => inputs.push(data.clone()),
+                ParserModuleVariable::Clock(data) => inputs.push(data.clone()),
                 ParserModuleVariable::Output(data) => outputs.push(data.clone()),
                 ParserModuleVariable::DefinedWire(_) => {}
                 ParserModuleVariable::UndefinedWire(_) => {}

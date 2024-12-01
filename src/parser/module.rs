@@ -293,6 +293,7 @@ pub fn parse_module(input: &mut Stream) -> PResult<Module> {
     for variable in module.variables {
         match variable {
             ParserModuleVariable::Input(data) => inputs.push(data),
+            ParserModuleVariable::Clock(data) => inputs.push(data),
             ParserModuleVariable::Output(data) => outputs.push(data),
             ParserModuleVariable::DefinedWire(_) => {}
             ParserModuleVariable::UndefinedWire(_) => {}

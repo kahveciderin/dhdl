@@ -84,6 +84,13 @@ pub fn parse_variable_definitions(input: &mut Stream) -> PResult<VariableDefinit
                         width: KnownBitWidth::Fixed(*width),
                     })
                 }
+                Decorator::Clock(width) => {
+                    ParserModuleVariable::Clock(ParserModuleVariableData {
+                        name: definition.name.clone(),
+                        external_name: definition.name.clone(),
+                        width: KnownBitWidth::Fixed(1),
+                    })
+                }
             };
             input.state.add_variable(variable);
         } else {

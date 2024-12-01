@@ -99,7 +99,11 @@ wire_name = a
 
 A wire can also be designated as an input or an output. To do this, use the `@in` and `@out` annotations. The bit width of the input or output is specified in the parentheses. If the bit width is omitted, it defaults to 1 for an input, and gets inferred from usage for the output.
 
-### More on the `@wire` annotation
+### More on annotations
+
+#### `@wire`
+
+The wire annotation lets you predefine wires to then connect them to other components. This allows for feedback loops.
 
 Here is an example of how to use the `@wire` annotation to build an RS flip-flop:
 
@@ -113,6 +117,16 @@ Here is an example of how to use the `@wire` annotation to build an RS flip-flop
 
 t0 = NotQ
 t1 = Q
+```
+
+#### `@clock`
+
+THe `@clock` annotation provides a clock component. The clock component has a single output, `clock`, which is a square wave. The frequency of the clock
+can be set using the `freq` attribute. The frequency is specified in Hz. If there is no frequency set, the clock will be manually triggered inside Digital.
+
+```
+@clock(5) clk // creates an input named clk with a frequency of 5 Hz
+@clock clk2 // creates an input named clk2 with a manually triggered clock
 ```
 
 ### Logic gates
@@ -270,6 +284,7 @@ The supported attribute types are:
 - `bool` -> `attribute = true` or `attribute = false`
 - `color` -> `attribute = rgba(255, 0, 0, 255)` or `attribute = rgb(255, 0, 0)`
 - `direction` -> `attribute = up` or `attribute = down` or `attribute = left` or `attribute = right`
+- `data` -> `attribute = d"11,0,95,0,97,20"`
 
 These can be determined by first using the component in Digital, saving the file and checking the generated XML file.
 
