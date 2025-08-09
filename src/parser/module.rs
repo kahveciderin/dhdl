@@ -140,7 +140,7 @@ fn parse_entry_value(input: &mut Stream) -> PResult<EntryValue> {
         parse_signed_number.map(|v| EntryValue::Integer(v as i32)),
         parse_string.map(|s| EntryValue::String(s.to_string())),
         parse_true.map(|_| EntryValue::Boolean(true)),
-        parse_false.map(|_| EntryValue::Boolean(true)),
+        parse_false.map(|_| EntryValue::Boolean(false)),
         parse_rgb_color.map(|(r, g, b, a)| EntryValue::Color((r, g, b, a))),
         parse_rgba_color.map(|(r, g, b, a)| EntryValue::Color((r, g, b, a))),
         parse_up.map(|_| EntryValue::Direction(EntryValueDirection::Up)),
